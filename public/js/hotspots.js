@@ -162,7 +162,6 @@
     var icon = hs.icon || {};
     var scaleX = icon.scaleX != null ? Number(icon.scaleX) : 1;
     var scaleY = icon.scaleY != null ? Number(icon.scaleY) : scaleX;
-    krpano.set(hsPath(name, "url"), imageUrl());
     krpano.set(hsPath(name, "ath"), icon.ath);
     krpano.set(hsPath(name, "atv"), icon.atv);
     krpano.set(hsPath(name, "edge"), icon.edge || "center");
@@ -177,6 +176,11 @@
     krpano.set(hsPath(name, "height"), MEDIA_ORIGIN_HEIGHT * scaleY);
     krpano.set(hsPath(name, "scale"), 1);
     krpano.set(hsPath(name, "visible"), hs.visible !== 0);
+    krpano.set(hsPath(name, "renderer"), "webgl");
+    krpano.set(hsPath(name, "url"), imageUrl());
+    var chroma = chromaKeyValue(icon);
+    krpano.set(hsPath(name, "chromakey"), chroma || null);
+    krpano.set(hsPath(name, "alphahittest"), chroma ? 0.08 : 0);
   }
 
   function addImageHotspot(krpano, hs, options) {
@@ -384,6 +388,33 @@
     return icon;
   }
 
+  function rgbToHex(r, g, b) {
+    return toHexString(((r & 255) << 16) + ((g & 255) << 8) + (b & 255));
+  }
+
+  function normalizeHex(value) {
+    var hex = String(value || "").trim();
+    if (!hex) return "";
+    if (hex.charAt(0) !== "#") hex = "#" + hex;
+    if (/^#([0-9a-fA-F]{3})$/.test(hex)) {
+      hex = "#" + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+    }
+    if (!/^#([0-9a-fA-F]{6})$/.test(hex)) return "";
+    return hex.toLowerCase();
+  }
+
+  function chromaKeyValue(icon) {
+    var hex = normalizeHex(icon && icon.chromaColor);
+    if (!hex) return "";
+    var rgb = hexToRgb(hex);
+    var color = "0x" + ("000000" + ((rgb.r << 16) + (rgb.g << 8) + rgb.b).toString(16)).slice(-6).toUpperCase();
+    var threshold = icon.chromaThreshold != null ? Number(icon.chromaThreshold) : 0.33;
+    var smoothing = icon.chromaSmoothing != null ? Number(icon.chromaSmoothing) : 0.1;
+    if (isNaN(threshold)) threshold = 0.33;
+    if (isNaN(smoothing)) smoothing = 0.1;
+    return color + "|" + threshold + "|" + smoothing;
+  }
+
   function defaultImageIcon() {
     return {
       type: TYPE_IMAGE,
@@ -552,6 +583,9 @@
     addPolyHotspot: addPolyHotspot,
     addImageHotspot: addImageHotspot,
     applyImageAppearance: applyImageAppearance,
+    rgbToHex: rgbToHex,
+    normalizeHex: normalizeHex,
+    chromaKeyValue: chromaKeyValue,
     removeHotspot: removeHotspot,
     readPoints: readPoints,
     setPoints: setPoints,

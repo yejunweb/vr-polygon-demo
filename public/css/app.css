@@ -630,3 +630,255 @@ a.btn {
 #btn-image-reset {
   margin-top: 16px;
 }
+
+.matting-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matting-color-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 4px 8px;
+  border: 1px solid #2e3644;
+  border-radius: 6px;
+  background: #1b2028;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.matting-color-btn:hover,
+.matting-color-btn.open {
+  border-color: #286efa;
+}
+
+.matting-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(45deg, #3a4354 25%, transparent 25%) 0 0 / 8px 8px,
+    linear-gradient(45deg, transparent 75%, #3a4354 75%) 0 0 / 8px 8px,
+    linear-gradient(45deg, transparent 75%, #3a4354 75%) 4px 4px / 8px 8px,
+    linear-gradient(45deg, #3a4354 25%, transparent 25%) 4px 4px / 8px 8px,
+    #1b2028;
+  flex: 0 0 18px;
+}
+
+.matting-hex {
+  font-size: 13px;
+  color: #d7dce6;
+  letter-spacing: 0.02em;
+}
+
+.matting-hex:empty::before {
+  content: "选择颜色";
+  color: #8b93a2;
+}
+
+.matting-eyedropper {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #2e3644;
+  border-radius: 6px;
+  background: #1b2028;
+  color: #c5c9d2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 36px;
+}
+
+.matting-eyedropper:hover,
+.matting-eyedropper.active {
+  border-color: #286efa;
+  color: #fff;
+  background: #1e2a40;
+}
+
+.matting-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  margin: 10px 0 0;
+  background: #2e3644;
+  border-radius: 999px;
+  outline: none;
+}
+
+.matting-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  cursor: pointer;
+}
+
+.matting-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  background: #fff;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  cursor: pointer;
+}
+
+.matting-range-labels {
+  align-items: center;
+  gap: 4px;
+}
+
+.matting-range-labels span:nth-child(2) {
+  margin-right: auto;
+}
+
+.matting-range-labels span:nth-child(3) {
+  margin-left: auto;
+}
+
+.range-step {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8b93a2;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.range-step:hover {
+  color: #fff;
+}
+
+.color-picker {
+  position: fixed;
+  z-index: 80;
+  width: 232px;
+  padding: 10px;
+  border: 1px solid #2e3644;
+  border-radius: 8px;
+  background: #1a1f27;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.cp-sv {
+  position: relative;
+  width: 100%;
+  height: 148px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.cp-sv-white,
+.cp-sv-black {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cp-sv-white {
+  background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
+}
+
+.cp-sv-black {
+  background: linear-gradient(to top, #000, rgba(0, 0, 0, 0));
+}
+
+.cp-sv-cursor {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.cp-hue {
+  position: relative;
+  height: 10px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  cursor: pointer;
+}
+
+.cp-hue-cursor {
+  position: absolute;
+  top: -2px;
+  width: 4px;
+  height: 14px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.cp-fields {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr 0.7fr 0.7fr;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.cp-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #8b93a2;
+}
+
+.cp-fields input {
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid #2e3644;
+  border-radius: 4px;
+  background: #14171c;
+  color: #fff;
+  font-size: 12px;
+}
+
+.cp-swatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.cp-swatches button {
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.cp-swatches button:hover {
+  outline: 1px solid #fff;
+}
+
+body.picking-scene-color,
+body.picking-scene-color #pano,
+body.picking-scene-color #pano * {
+  cursor: crosshair !important;
+}

@@ -13,6 +13,18 @@
   var styleTab = "normal";
   var searchText = "";
   var panel = "list";
+  var imageAdvTab = "detail";
+  var pickingColor = false;
+  var savedUserControl = null;
+  var colorPickerOpen = false;
+  var cpState = { h: 0, s: 0, v: 0.5 };
+  var cpDrag = null;
+  var DEFAULT_MATTING_THRESHOLD = 0.33;
+  var DEFAULT_MATTING_SMOOTHING = 0.1;
+  var CP_PRESETS = [
+    "#d0021b", "#f5a623", "#f8e71c", "#8b572a", "#7ed321", "#417505", "#bd10e0", "#9013fe",
+    "#4a90e2", "#50e3c2", "#b8e986", "#000000", "#4a4a4a", "#9b9b9b", "#d8d8d8", "#ffffff"
+  ];
 
   var els = {
     listPanel: document.getElementById("panel-list"),
@@ -77,7 +89,25 @@
     imageAdvMatting: document.getElementById("image-adv-matting"),
     imageAdvToggle: document.getElementById("btn-image-adv-toggle"),
     imageAdvanced: document.getElementById("image-advanced"),
-    imageReset: document.getElementById("btn-image-reset")
+    imageReset: document.getElementById("btn-image-reset"),
+    mattingColorBtn: document.getElementById("btn-matting-color"),
+    mattingSwatch: document.getElementById("matting-swatch"),
+    mattingHex: document.getElementById("matting-hex"),
+    mattingEyedropper: document.getElementById("btn-matting-eyedropper"),
+    mattingOpacity: document.getElementById("input-matting-opacity"),
+    mattingOpacityValue: document.getElementById("matting-opacity-value"),
+    mattingSmooth: document.getElementById("input-matting-smooth"),
+    mattingSmoothValue: document.getElementById("matting-smooth-value"),
+    colorPicker: document.getElementById("color-picker"),
+    cpSv: document.getElementById("cp-sv"),
+    cpSvCursor: document.getElementById("cp-sv-cursor"),
+    cpHue: document.getElementById("cp-hue"),
+    cpHueCursor: document.getElementById("cp-hue-cursor"),
+    cpHex: document.getElementById("cp-hex"),
+    cpR: document.getElementById("cp-r"),
+    cpG: document.getElementById("cp-g"),
+    cpB: document.getElementById("cp-b"),
+    cpSwatches: document.getElementById("cp-swatches")
   };
 
   var ignorePanoClick = false;
@@ -385,13 +415,8 @@
     els.imageRxValue.textContent = formatDeg(els.imageRx.value);
     els.imageRyValue.textContent = formatDeg(els.imageRy.value);
     els.imageRzValue.textContent = formatDeg(els.imageRz.value);
-    if (els.imageAdvTabs) {
-      Array.prototype.forEach.call(els.imageAdvTabs.querySelectorAll(".tab"), function (btn) {
-        btn.classList.toggle("active", btn.getAttribute("data-tab") === "detail");
-      });
-      els.imageAdvDetail.hidden = false;
-      els.imageAdvMatting.hidden = true;
-    }
+    fillMattingForm(record);
+    setImageAdvTab(imageAdvTab);
   }
 
   function writeImageForm(record) {
@@ -407,6 +432,373 @@
     icon.ry = Number(els.imageRy.value) || 0;
     icon.rz = Number(els.imageRz.value) || 0;
     icon.rotate = icon.rz;
+    writeMattingForm(record);
+  }
+
+  function formatMattingValue(value) {
+    var n = Number(value);
+    if (isNaN(n)) n = 0;
+    n = Math.max(0, Math.min(1, n));
+    return Number(n.toFixed(2));
+  }
+
+  function clampChannel(value) {
+    var n = Math.round(Number(value));
+    if (isNaN(n)) n = 0;
+    return Math.max(0, Math.min(255, n));
+  }
+
+  function rgbToHsv(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    var max = Math.max(r, g, b);
+    var min = Math.min(r, g, b);
+    var d = max - min;
+    var h = 0;
+    var s = max === 0 ? 0 : d / max;
+    var v = max;
+    if (d !== 0) {
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    return { h: h * 360, s: s, v: v };
+  }
+
+  function hsvToRgb(h, s, v) {
+    h = ((h % 360) + 360) % 360;
+    var c = v * s;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = v - c;
+    var r = 0;
+    var g = 0;
+    var b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return {
+      r: Math.round((r + m) * 255),
+      g: Math.round((g + m) * 255),
+      b: Math.round((b + m) * 255)
+    };
+  }
+
+  function hexFromRgb(rgb) {
+    return HS.rgbToHex(rgb.r, rgb.g, rgb.b);
+  }
+
+  function setImageAdvTab(tab) {
+    imageAdvTab = tab || "detail";
+    if (!els.imageAdvTabs) return;
+    Array.prototype.forEach.call(els.imageAdvTabs.querySelectorAll(".tab"), function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === imageAdvTab);
+    });
+    els.imageAdvDetail.hidden = imageAdvTab !== "detail";
+    els.imageAdvMatting.hidden = imageAdvTab !== "matting";
+    if (els.imageReset) els.imageReset.textContent = imageAdvTab === "matting" ? "清除设置" : "重置设置";
+    if (imageAdvTab !== "matting") hideColorPicker();
+  }
+
+  function fillMattingForm(record) {
+    var icon = (record && record.icon) || {};
+    var hex = HS.normalizeHex(icon.chromaColor);
+    var opacity = icon.chromaThreshold != null ? formatMattingValue(icon.chromaThreshold) : DEFAULT_MATTING_THRESHOLD;
+    var smooth = icon.chromaSmoothing != null ? formatMattingValue(icon.chromaSmoothing) : DEFAULT_MATTING_SMOOTHING;
+    els.mattingOpacity.value = opacity;
+    els.mattingSmooth.value = smooth;
+    els.mattingOpacityValue.textContent = String(opacity);
+    els.mattingSmoothValue.textContent = String(smooth);
+    renderMattingColor(hex);
+  }
+
+  function writeMattingForm(record) {
+    if (!record || !record.icon) return;
+    var hex = HS.normalizeHex(els.mattingHex.textContent);
+    if (hex) {
+      record.icon.chromaColor = hex;
+      record.icon.chromaThreshold = formatMattingValue(els.mattingOpacity.value);
+      record.icon.chromaSmoothing = formatMattingValue(els.mattingSmooth.value);
+    } else {
+      delete record.icon.chromaColor;
+      delete record.icon.chromaThreshold;
+      delete record.icon.chromaSmoothing;
+    }
+  }
+
+  function renderMattingColor(hex) {
+    hex = HS.normalizeHex(hex);
+    els.mattingHex.textContent = hex;
+    els.mattingSwatch.style.background = hex || "";
+  }
+
+  function applyMattingColor(hex) {
+    hex = HS.normalizeHex(hex);
+    if (!hex) return;
+    renderMattingColor(hex);
+    applyLiveImage();
+    if (colorPickerOpen) syncColorPicker(hex, false);
+  }
+
+  function hideColorPicker() {
+    if (!els.colorPicker) return;
+    els.colorPicker.hidden = true;
+    colorPickerOpen = false;
+    if (els.mattingColorBtn) els.mattingColorBtn.classList.remove("open");
+  }
+
+  function positionColorPicker() {
+    if (!els.colorPicker || !els.mattingColorBtn) return;
+    var rect = els.mattingColorBtn.getBoundingClientRect();
+    var width = els.colorPicker.offsetWidth || 232;
+    var height = els.colorPicker.offsetHeight || 280;
+    var left = rect.right + 10;
+    var top = rect.top;
+    if (left + width > window.innerWidth - 8) left = Math.max(8, rect.left);
+    if (top + height > window.innerHeight - 8) top = Math.max(8, window.innerHeight - height - 8);
+    els.colorPicker.style.left = left + "px";
+    els.colorPicker.style.top = top + "px";
+  }
+
+  function syncColorPicker(hex, apply) {
+    hex = HS.normalizeHex(hex) || "#808080";
+    var rgb = HS.hexToRgb(hex);
+    cpState = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    els.cpSv.style.background = "hsl(" + cpState.h + ", 100%, 50%)";
+    els.cpSvCursor.style.left = (cpState.s * 100) + "%";
+    els.cpSvCursor.style.top = ((1 - cpState.v) * 100) + "%";
+    els.cpHueCursor.style.left = ((cpState.h / 360) * 100) + "%";
+    els.cpHex.value = hex.replace("#", "").toUpperCase();
+    els.cpR.value = rgb.r;
+    els.cpG.value = rgb.g;
+    els.cpB.value = rgb.b;
+    if (apply) applyMattingColor(hex);
+  }
+
+  function colorFromCpState() {
+    return hexFromRgb(hsvToRgb(cpState.h, cpState.s, cpState.v));
+  }
+
+  function showColorPicker() {
+    if (!els.colorPicker) return;
+    stopScenePick();
+    var hex = HS.normalizeHex(els.mattingHex.textContent) || "#808080";
+    els.colorPicker.hidden = false;
+    colorPickerOpen = true;
+    els.mattingColorBtn.classList.add("open");
+    syncColorPicker(hex, false);
+    positionColorPicker();
+  }
+
+  function toggleColorPicker() {
+    if (colorPickerOpen) hideColorPicker();
+    else showColorPicker();
+  }
+
+  function updateCpFromPointer(kind, ev) {
+    var node = kind === "hue" ? els.cpHue : els.cpSv;
+    var rect = node.getBoundingClientRect();
+    var x = (ev.clientX - rect.left) / rect.width;
+    var y = (ev.clientY - rect.top) / rect.height;
+    x = Math.max(0, Math.min(1, x));
+    y = Math.max(0, Math.min(1, y));
+    if (kind === "hue") cpState.h = x * 360;
+    else {
+      cpState.s = x;
+      cpState.v = 1 - y;
+    }
+    syncColorPicker(colorFromCpState(), true);
+  }
+
+  function initColorPicker() {
+    if (!els.cpSwatches) return;
+    CP_PRESETS.forEach(function (color) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("data-color", color);
+      btn.style.background = color;
+      els.cpSwatches.appendChild(btn);
+    });
+    els.cpSwatches.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-color]");
+      if (!btn) return;
+      syncColorPicker(btn.getAttribute("data-color"), true);
+    });
+    function bindDrag(node, kind) {
+      node.addEventListener("mousedown", function (ev) {
+        ev.preventDefault();
+        cpDrag = kind;
+        updateCpFromPointer(kind, ev);
+      });
+    }
+    bindDrag(els.cpSv, "sv");
+    bindDrag(els.cpHue, "hue");
+    document.addEventListener("mousemove", function (ev) {
+      if (!cpDrag) return;
+      updateCpFromPointer(cpDrag, ev);
+    });
+    document.addEventListener("mouseup", function () {
+      cpDrag = null;
+    });
+    els.cpHex.addEventListener("change", function () {
+      var hex = HS.normalizeHex(els.cpHex.value);
+      if (hex) syncColorPicker(hex, true);
+      else syncColorPicker(colorFromCpState(), false);
+    });
+    function onRgbChange() {
+      var hex = hexFromRgb({
+        r: clampChannel(els.cpR.value),
+        g: clampChannel(els.cpG.value),
+        b: clampChannel(els.cpB.value)
+      });
+      syncColorPicker(hex, true);
+    }
+    [els.cpR, els.cpG, els.cpB].forEach(function (input) {
+      input.addEventListener("change", onRgbChange);
+    });
+    document.addEventListener("mousedown", function (ev) {
+      if (!colorPickerOpen) return;
+      if (els.colorPicker.contains(ev.target) || els.mattingColorBtn.contains(ev.target)) return;
+      hideColorPicker();
+    });
+  }
+
+  function getPanoCanvas() {
+    return document.querySelector("#pano canvas");
+  }
+
+  function sampleScreenshotColor(pano) {
+    if (!pano || !pano.webGL || typeof pano.webGL.makeScreenshot !== "function") return "";
+    var shot = pano.webGL.makeScreenshot(0, 0, true, "canvas");
+    if (!shot) return "";
+    var mx = Math.round(Number(pano.get("mouse.stagex")));
+    var my = Math.round(Number(pano.get("mouse.stagey")));
+    if (isNaN(mx) || isNaN(my) || mx < 0 || my < 0 || mx >= shot.width || my >= shot.height) return "";
+    try {
+      var pix = shot.getContext("2d").getImageData(mx, my, 1, 1).data;
+      if (pix[3] > 0 || pix[0] || pix[1] || pix[2]) {
+        return hexFromRgb({ r: pix[0], g: pix[1], b: pix[2] });
+      }
+    } catch (err) {}
+    return "";
+  }
+
+  function sampleCanvasColor(clientX, clientY) {
+    var canvas = getPanoCanvas();
+    if (!canvas) return "";
+    var rect = canvas.getBoundingClientRect();
+    var scaleX = canvas.width / rect.width;
+    var scaleY = canvas.height / rect.height;
+    var x = Math.round((clientX - rect.left) * scaleX);
+    var y = Math.round((clientY - rect.top) * scaleY);
+    if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return "";
+    try {
+      var tmp = document.createElement("canvas");
+      tmp.width = 1;
+      tmp.height = 1;
+      var ctx = tmp.getContext("2d");
+      ctx.drawImage(canvas, x, y, 1, 1, 0, 0, 1, 1);
+      var data = ctx.getImageData(0, 0, 1, 1).data;
+      if (data[3] > 0 || data[0] || data[1] || data[2]) {
+        return hexFromRgb({ r: data[0], g: data[1], b: data[2] });
+      }
+    } catch (err) {}
+    return "";
+  }
+
+  function stopScenePick() {
+    if (!pickingColor) return;
+    pickingColor = false;
+    document.body.classList.remove("picking-scene-color");
+    if (els.mattingEyedropper) els.mattingEyedropper.classList.remove("active");
+    document.getElementById("pano").removeEventListener("click", onScenePickClick, true);
+    document.getElementById("pano").removeEventListener("mousemove", onScenePickMove, true);
+    var pano = krpano();
+    if (pano && savedUserControl != null) {
+      pano.set("control.usercontrol", savedUserControl);
+      savedUserControl = null;
+    }
+  }
+
+  function onScenePickMove(ev) {
+    if (!pickingColor) return;
+    ev.preventDefault();
+  }
+
+  function onScenePickClick(ev) {
+    if (!pickingColor) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    var pano = krpano();
+    var record = currentRecord();
+    var name = record && HS.isImageType(record.icon && record.icon.type) ? HS.safeName(record.id) : null;
+    var backup = null;
+    if (pano && name) {
+      backup = pano.get(HS.hsPath(name, "chromakey"));
+      pano.set(HS.hsPath(name, "chromakey"), null);
+    }
+    var hex = sampleScreenshotColor(pano);
+    if (!hex) hex = sampleCanvasColor(ev.clientX, ev.clientY);
+    if (pano && name && backup) pano.set(HS.hsPath(name, "chromakey"), backup);
+    stopScenePick();
+    if (hex) {
+      applyMattingColor(hex);
+      setStatus("已选取抠像颜色 " + hex, "ok");
+    } else {
+      setStatus("未能读取该点颜色，请改用调色盘", "error");
+    }
+  }
+
+  function startScenePick() {
+    hideColorPicker();
+    if (pickingColor) {
+      stopScenePick();
+      return;
+    }
+    var pano = krpano();
+    pickingColor = true;
+    document.body.classList.add("picking-scene-color");
+    els.mattingEyedropper.classList.add("active");
+    document.getElementById("pano").addEventListener("click", onScenePickClick, true);
+    document.getElementById("pano").addEventListener("mousemove", onScenePickMove, true);
+    if (pano) {
+      savedUserControl = pano.get("control.usercontrol");
+      pano.set("control.usercontrol", "off");
+    }
+    setStatus("点击场景选取要去除的颜色，Esc 取消");
+  }
+
+  function startEyedropper() {
+    hideColorPicker();
+    if (window.EyeDropper) {
+      var dropper = new EyeDropper();
+      els.mattingEyedropper.classList.add("active");
+      dropper.open().then(function (result) {
+        applyMattingColor(result.sRGBHex);
+        setStatus("已选取抠像颜色 " + HS.normalizeHex(result.sRGBHex), "ok");
+      }).catch(function () {
+        setStatus("已取消取色");
+      }).then(function () {
+        els.mattingEyedropper.classList.remove("active");
+      });
+      return;
+    }
+    startScenePick();
+  }
+
+  function onMattingSliderInput() {
+    els.mattingOpacityValue.textContent = String(formatMattingValue(els.mattingOpacity.value));
+    els.mattingSmoothValue.textContent = String(formatMattingValue(els.mattingSmooth.value));
+    applyLiveImage();
+  }
+
+  function nudgeMattingSlider(kind, delta) {
+    var input = kind === "smooth" ? els.mattingSmooth : els.mattingOpacity;
+    input.value = formatMattingValue(Number(input.value) + Number(delta));
+    onMattingSliderInput();
   }
 
   function applyLiveImage() {
@@ -477,6 +869,16 @@
   function resetImageAdvanced() {
     var record = currentRecord();
     if (!record || !record.icon) return;
+    if (imageAdvTab === "matting") {
+      delete record.icon.chromaColor;
+      delete record.icon.chromaThreshold;
+      delete record.icon.chromaSmoothing;
+      fillMattingForm(record);
+      hideColorPicker();
+      applyLiveImage();
+      setStatus("已清除抠像设置", "ok");
+      return;
+    }
     var defaults = HS.defaultImageIcon();
     record.icon.edge = defaults.edge;
     record.icon.scaleLock = defaults.scaleLock;
@@ -571,6 +973,9 @@
     if (drawing) cancelDraw(true);
     selectedId = id;
     styleTab = "normal";
+    imageAdvTab = "detail";
+    hideColorPicker();
+    stopScenePick();
     showPanel("settings");
     fillForm(record);
     clearVertices();
@@ -643,6 +1048,9 @@
     if (drawing && cancelIfDrawing !== false) cancelDraw(true);
     selectedId = null;
     styleTab = "normal";
+    imageAdvTab = "detail";
+    hideColorPicker();
+    stopScenePick();
     clearVertices();
     showPanel("list");
     renderList();
@@ -1076,13 +1484,36 @@
       var btn = ev.target.closest(".tab");
       if (!btn) return;
       var tab = btn.getAttribute("data-tab") || "detail";
-      Array.prototype.forEach.call(els.imageAdvTabs.querySelectorAll(".tab"), function (item) {
-        item.classList.toggle("active", item === btn);
-      });
-      els.imageAdvDetail.hidden = tab !== "detail";
-      els.imageAdvMatting.hidden = tab !== "matting";
+      setImageAdvTab(tab);
     });
   }
+  if (els.mattingColorBtn) {
+    els.mattingColorBtn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      toggleColorPicker();
+    });
+  }
+  if (els.mattingEyedropper) {
+    els.mattingEyedropper.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      startEyedropper();
+    });
+  }
+  if (els.mattingOpacity) {
+    els.mattingOpacity.addEventListener("input", onMattingSliderInput);
+  }
+  if (els.mattingSmooth) {
+    els.mattingSmooth.addEventListener("input", onMattingSliderInput);
+  }
+  document.querySelectorAll(".range-step[data-matting]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      nudgeMattingSlider(btn.getAttribute("data-matting"), btn.getAttribute("data-delta"));
+    });
+  });
+  initColorPicker();
+  window.addEventListener("resize", function () {
+    if (colorPickerOpen) positionColorPicker();
+  });
   if (els.imageAdvToggle) {
     els.imageAdvToggle.addEventListener("click", function () {
       els.imageAdvanced.classList.toggle("open");
@@ -1098,7 +1529,12 @@
       finishDraw();
     } else if (ev.key === "Escape") {
       ev.preventDefault();
-      if (drawing) backToList(true);
+      if (pickingColor) {
+        stopScenePick();
+        setStatus("已取消取色");
+      } else if (colorPickerOpen) {
+        hideColorPicker();
+      } else if (drawing) backToList(true);
       else if (panel === "picker" || panel === "settings") showPanel("list");
     } else if ((ev.key === "Backspace" || ev.key === "Delete") && drawing && document.activeElement === document.body) {
       ev.preventDefault();
