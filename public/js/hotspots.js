@@ -1,5 +1,7 @@
 (function (global) {
-  var IMAGE_URL = "/assets/hotspot-image.jpg";
+  function imageUrl() {
+    return (typeof window.withBase === "function" ? window.withBase("/assets/hotspot-image.jpg") : "/assets/hotspot-image.jpg");
+  }
   var MEDIA_ORIGIN_WIDTH = 5568;
   var MEDIA_ORIGIN_HEIGHT = 3712;
   var TYPE_IMAGE = 2;
@@ -160,7 +162,7 @@
     var icon = hs.icon || {};
     var scaleX = icon.scaleX != null ? Number(icon.scaleX) : 1;
     var scaleY = icon.scaleY != null ? Number(icon.scaleY) : scaleX;
-    krpano.set(hsPath(name, "url"), IMAGE_URL);
+    krpano.set(hsPath(name, "url"), imageUrl());
     krpano.set(hsPath(name, "ath"), icon.ath);
     krpano.set(hsPath(name, "atv"), icon.atv);
     krpano.set(hsPath(name, "edge"), icon.edge || "center");
@@ -386,7 +388,7 @@
     return {
       type: TYPE_IMAGE,
       edge: "center",
-      media: [{ id: 0, url: IMAGE_URL }],
+      media: [{ id: 0, url: imageUrl() }],
       autoPlayType: 1,
       autoPlayDuration: 3,
       scaleLock: 0,

@@ -4,14 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
   <title>编辑 - 热点</title>
-  <link rel="stylesheet" href="/css/app.css" />
+  <base href="/" />
+  <link rel="stylesheet" href="css/app.css" />
 </head>
 <body class="editor-page">
   <header class="toolbar">
     <h1>热点编辑</h1>
     <span class="spacer"></span>
     <button class="btn primary" id="btn-save" type="button">保存</button>
-    <a class="btn" href="/preview">预览</a>
+    <a class="btn" href="preview.html">预览</a>
   </header>
   <aside class="sidebar">
     <section class="panel" id="panel-list">
@@ -104,7 +105,7 @@
       <div id="image-settings" hidden>
         <div class="image-preview-box">
           <div class="image-thumb">
-            <img id="image-thumb-src" src="/assets/hotspot-image.jpg" alt="图片热点" />
+            <img id="image-thumb-src" src="assets/hotspot-image.jpg" alt="图片热点" />
             <button class="image-trash" id="btn-image-trash" type="button" title="暂不支持更换图片" disabled>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
@@ -269,13 +270,14 @@
   </aside>
   <div id="pano"></div>
   <div class="status" id="status">加载中…</div>
-  <script src="/krpano/tour.js"></script>
-  <script src="/js/api.js"></script>
-  <script src="/js/hotspots.js"></script>
-  <script src="/js/editor.js"></script>
+  <script src="krpano/tour.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/hotspots.js"></script>
+  <script src="js/editor.js"></script>
   <script>
     embedpano({
-      xml: "/krpano/tour.xml",
+      xml: withBase("/krpano/tour.xml"),
       target: "pano",
       html5: "only",
       mobilescale: 1.0,

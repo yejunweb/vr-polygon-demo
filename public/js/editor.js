@@ -835,8 +835,8 @@
     writeFormToIcon();
     setStatus("保存中…");
     TourAPI.saveTour(tourData)
-      .then(function () {
-        setStatus("已保存", "ok");
+      .then(function (result) {
+        setStatus(result && result.local ? "已保存到本机（GitHub Pages 无法写回仓库）" : "已保存", "ok");
       })
       .catch(function (err) {
         setStatus(err.message || "保存失败", "error");

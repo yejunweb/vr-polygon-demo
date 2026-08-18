@@ -21,6 +21,7 @@ app.use(express.json({ limit: "5mb" }));
 
 app.use("/krpano", express.static(path.join(ROOT, "krpano")));
 app.use("/assets", express.static(path.join(ROOT, "assets")));
+app.use("/data", express.static(path.join(ROOT, "data")));
 app.use(express.static(PUBLIC_DIR));
 
 app.get("/api/tour", function (req, res) {
