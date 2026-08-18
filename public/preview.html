@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>预览 - 多边形 / 折线热点</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <div id="pano"></div>
+  <div id="tour-title" class="tour-title"></div>
+  <a class="nav-chip" href="/editor">进入编辑</a>
+  <script src="/krpano/tour.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/hotspots.js"></script>
+  <script src="/js/preview.js"></script>
+  <script>
+    embedpano({
+      xml: "/krpano/tour.xml",
+      target: "pano",
+      html5: "only",
+      mobilescale: 1.0,
+      consolelog: false,
+      passQueryParameters: true,
+      onready: function (krpano) {
+        window.krpano = krpano;
+      }
+    });
+  </script>
+</body>
+</html>
