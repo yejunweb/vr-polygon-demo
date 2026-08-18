@@ -63,6 +63,7 @@
   var VERTEX_RED = "#E23C3C";
   var ACT_OK = "vtx_act_ok";
   var ACT_DEL = "vtx_act_del";
+  var ACT_EDIT = "vtx_act_edit";
 
   function krpano() {
     return window.krpano || null;
@@ -164,13 +165,18 @@
   }
 
   function actionHtml(kind) {
-    var icon = kind === "ok"
-      ? "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg>"
-      : "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"3 6 5 6 21 6\"/><path d=\"M19 6l-1 14H6L5 6\"/><path d=\"M10 11v6M14 11v6\"/><path d=\"M9 6V4h6v2\"/></svg>";
+    var icon;
+    if (kind === "ok") {
+      icon = "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg>";
+    } else if (kind === "edit") {
+      icon = "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20h9\"/><path d=\"M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z\"/></svg>";
+    } else {
+      icon = "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"3 6 5 6 21 6\"/><path d=\"M19 6l-1 14H6L5 6\"/><path d=\"M10 11v6M14 11v6\"/><path d=\"M9 6V4h6v2\"/></svg>";
+    }
     return "<div style=\"width:32px;height:32px;border-radius:6px;background:rgba(20,22,26,.78);display:flex;align-items:center;justify-content:center;\">" + icon + "</div>";
   }
 
-  function addVertex(targetName, index, point, isDraft, isLatest) {
+  function addVertex(targetName, index, point, isDraft, isLatest, interactive) {
     var pano = krpano();
     var name = "vtx_" + index;
     pano.call("addhotspot(" + HS.quote(name) + ")");
@@ -178,6 +184,12 @@
     pano.set(HS.hsPath(name, "ath"), point.ath);
     pano.set(HS.hsPath(name, "atv"), point.atv);
     pano.set(HS.hsPath(name, "html"), vertexHtml(isLatest ? VERTEX_RED : VERTEX_BLUE));
+    if (interactive === false) {
+      pano.set(HS.hsPath(name, "ondown"), "");
+      pano.set(HS.hsPath(name, "onup"), "");
+      pano.set(HS.hsPath(name, "enabled"), false);
+      pano.set(HS.hsPath(name, "capture"), false);
+    }
     vertexNames.push(name);
     vertexMap[name] = { targetName: targetName, index: index, isDraft: !!isDraft };
   }
@@ -192,14 +204,16 @@
     pano.set(HS.hsPath(name, "html"), actionHtml(kind));
     pano.set(HS.hsPath(name, "onclick"), kind === "ok"
       ? "js(onDrawFinishClick());"
-      : "js(onDrawDeleteClick());");
+      : kind === "edit"
+        ? "js(onStartEditClick());"
+        : "js(onDrawDeleteClick());");
     vertexNames.push(name);
   }
 
   function syncActionButtons(point) {
     var pano = krpano();
     if (!pano || !point) return;
-    [ACT_OK, ACT_DEL].forEach(function (name) {
+    [ACT_OK, ACT_DEL, ACT_EDIT].forEach(function (name) {
       if (pano.get(HS.hsPath(name, "name"))) {
         pano.set(HS.hsPath(name, "ath"), point.ath);
         pano.set(HS.hsPath(name, "atv"), point.atv);
@@ -372,7 +386,7 @@
     var record = HS.findHotspot(tourData, id);
     if (!record) return;
     if (HS.isPolyType(record.icon && record.icon.type)) {
-      resumeDraw(record);
+      inspectShape(record);
       return;
     }
     if (drawing) cancelDraw(true);
@@ -384,6 +398,21 @@
     updateDrawButtons();
     renderList();
     setStatus("图片热点");
+  }
+
+  function inspectShape(record) {
+    if (drawing && draft && draft.existingId === record.id) return;
+    if (drawing) cancelDraw(true);
+    selectedId = record.id;
+    styleTab = "normal";
+    showPanel("settings");
+    fillForm(record);
+    setDrawEvents(false);
+    setPolyHotspotsEnabled(true);
+    renderInspectAnchor(record);
+    updateDrawButtons();
+    renderList();
+    setStatus("点击最新端点上的编辑图标开始改点");
   }
 
   function resumeDraw(record) {
@@ -421,7 +450,7 @@
     draft = null;
     showPanel("settings");
     fillForm(record);
-    clearVertices();
+    renderInspectAnchor(record);
     updateDrawButtons();
     renderList();
   }
@@ -463,6 +492,15 @@
       applyLiveStyle();
     }
     renderVertices(DRAFT_NAME, draft.points, true);
+  }
+
+  function renderInspectAnchor(record) {
+    clearVertices();
+    if (!record || !record.icon || !record.icon.points || !record.icon.points.length) return;
+    var points = HS.unwrapPoints(record.icon.points);
+    var last = points[points.length - 1];
+    addVertex(HS.safeName(record.id), points.length - 1, last, false, true, false);
+    addActionButton(ACT_EDIT, last, 0, "edit");
   }
 
   function startDraw(type) {
@@ -669,6 +707,13 @@
 
   window.onTitleDragEnd = function () {
     setStatus("标题位置已更新，记得保存", "ok");
+  };
+
+  window.onStartEditClick = function () {
+    ignorePanoClick = true;
+    var record = selectedId ? HS.findHotspot(tourData, selectedId) : null;
+    if (record) resumeDraw(record);
+    setTimeout(function () { ignorePanoClick = false; }, 50);
   };
 
   window.onDrawFinishClick = function () {
