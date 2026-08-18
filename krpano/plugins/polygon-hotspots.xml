@@ -147,4 +147,16 @@
 			tween(hotspot[%1].bordercolor, get(dest_border_color), get(hotspot[%1].blink_duration), linear, polygon_blink_enable(%1););
 		);
 	</action>
+
+	<action name="on_image_over">
+		if(titlehs !== null AND hover_title === true,
+			set(hotspot[get(titlehs)].visible, true);
+		);
+	</action>
+
+	<action name="on_image_out">
+		if(titlehs !== null AND hover_title === true,
+			set(hotspot[get(titlehs)].visible, false);
+		);
+	</action>
 </krpano>

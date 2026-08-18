@@ -154,37 +154,54 @@
     return name;
   }
 
-  function addImageHotspot(krpano, hs, options) {
+  function applyImageAppearance(krpano, hs) {
+    if (!krpano || !hs) return;
     var name = safeName(hs.id);
     var icon = hs.icon || {};
     var scaleX = icon.scaleX != null ? Number(icon.scaleX) : 1;
     var scaleY = icon.scaleY != null ? Number(icon.scaleY) : scaleX;
-
-    krpano.call("addhotspot(" + quote(name) + ")");
-    krpano.call("callwith(hotspot[" + quote(name) + "], loadstyle(image_hotspot));");
     krpano.set(hsPath(name, "url"), IMAGE_URL);
     krpano.set(hsPath(name, "ath"), icon.ath);
     krpano.set(hsPath(name, "atv"), icon.atv);
     krpano.set(hsPath(name, "edge"), icon.edge || "center");
     krpano.set(hsPath(name, "distorted"), icon.stick === 1);
-    krpano.set(hsPath(name, "zoom"), !!icon.zoom);
+    krpano.set(hsPath(name, "zoom"), icon.zoom === true || icon.zoom === 1);
     krpano.set(hsPath(name, "rx"), icon.rx || 0);
     krpano.set(hsPath(name, "ry"), icon.ry || 0);
     krpano.set(hsPath(name, "rz"), icon.rz || 0);
-    krpano.set(hsPath(name, "rotate"), icon.rotate || 0);
+    krpano.set(hsPath(name, "rotate"), icon.rotate != null ? icon.rotate : (icon.rz || 0));
     krpano.set(hsPath(name, "zorder"), hs.zOrder != null ? hs.zOrder : 10);
     krpano.set(hsPath(name, "width"), MEDIA_ORIGIN_WIDTH * scaleX);
     krpano.set(hsPath(name, "height"), MEDIA_ORIGIN_HEIGHT * scaleY);
     krpano.set(hsPath(name, "scale"), 1);
     krpano.set(hsPath(name, "visible"), hs.visible !== 0);
-    krpano.set(hsPath(name, "capture"), false);
+  }
+
+  function addImageHotspot(krpano, hs, options) {
+    var name = safeName(hs.id);
+    krpano.call("addhotspot(" + quote(name) + ")");
+    krpano.call("callwith(hotspot[" + quote(name) + "], loadstyle(image_hotspot));");
     krpano.set(hsPath(name, "data_id"), hs.id);
+    applyImageAppearance(krpano, hs);
     if (options && options.editable) {
       krpano.set(hsPath(name, "enabled"), true);
+      krpano.set(hsPath(name, "handcursor"), true);
+      krpano.set(hsPath(name, "capture"), false);
       krpano.set(hsPath(name, "onclick"), "js(onEditorSelectHotspot(" + quote(name) + "));");
+      krpano.set(hsPath(name, "ondown"), "");
+      krpano.set(hsPath(name, "onup"), "");
+      krpano.set(hsPath(name, "onover"), "");
+      krpano.set(hsPath(name, "onout"), "");
     } else {
-      krpano.set(hsPath(name, "enabled"), false);
+      krpano.set(hsPath(name, "enabled"), true);
+      krpano.set(hsPath(name, "handcursor"), false);
+      krpano.set(hsPath(name, "capture"), false);
+      krpano.set(hsPath(name, "onover"), "on_image_over();");
+      krpano.set(hsPath(name, "onout"), "on_image_out();");
+      krpano.set(hsPath(name, "ondown"), "if(device.touch, on_image_over(););");
+      krpano.set(hsPath(name, "onup"), "if(device.touch, on_image_out(););");
     }
+    applyTitleHotspot(krpano, hs, options);
     return name;
   }
 
@@ -237,7 +254,8 @@
   }
 
   function applyTitleHotspot(krpano, hs, options) {
-    if (!krpano || !hs || !isPolyType(hs.icon && hs.icon.type)) return null;
+    var type = hs.icon && hs.icon.type;
+    if (!krpano || !hs || !(isPolyType(type) || type === TYPE_IMAGE)) return null;
     var ts = ensureTitleSetting(hs);
     var name = titleHotspotName(hs.id);
     var parent = safeName(hs.id);
@@ -306,6 +324,10 @@
     return type === TYPE_POLYGON || type === TYPE_POLYLINE;
   }
 
+  function isImageType(type) {
+    return type === TYPE_IMAGE;
+  }
+
   function applyHotspots(krpano, data, options) {
     if (!krpano || !data) return;
     var scene = getScene(data);
@@ -358,6 +380,46 @@
       icon.overFillColor = "255,255,255,0.50";
     }
     return icon;
+  }
+
+  function defaultImageIcon() {
+    return {
+      type: TYPE_IMAGE,
+      edge: "center",
+      media: [{ id: 0, url: IMAGE_URL }],
+      autoPlayType: 1,
+      autoPlayDuration: 3,
+      scaleLock: 0,
+      scaleX: 0.037,
+      scaleY: 0.037,
+      stick: 1,
+      positionType: 0,
+      rx: 0,
+      ry: 0,
+      rz: 0,
+      rotate: 0,
+      zoom: true
+    };
+  }
+
+  function createImageHotspotRecord(ath, atv, zOrder) {
+    var icon = defaultImageIcon();
+    icon.ath = Number(ath) || 0;
+    icon.atv = Number(atv) || 0;
+    var titleSetting = defaultTitleSetting();
+    titleSetting.ath = icon.ath;
+    titleSetting.atv = icon.atv;
+    return {
+      id: "h_" + Math.random().toString(36).slice(2, 12) + Date.now().toString(36),
+      zOrder: zOrder || 10,
+      icon: icon,
+      title: "图片",
+      showTitle: 1,
+      titleSetting: titleSetting,
+      visible: 1,
+      locked: 0,
+      data: { code: 9, title: "" }
+    };
   }
 
   function createHotspotRecord(type, points, zOrder, iconStyle) {
@@ -483,13 +545,18 @@
     getScene: getScene,
     getHotspots: getHotspots,
     isPolyType: isPolyType,
+    isImageType: isImageType,
     applyHotspots: applyHotspots,
     addPolyHotspot: addPolyHotspot,
+    addImageHotspot: addImageHotspot,
+    applyImageAppearance: applyImageAppearance,
     removeHotspot: removeHotspot,
     readPoints: readPoints,
     setPoints: setPoints,
     defaultPolyIcon: defaultPolyIcon,
+    defaultImageIcon: defaultImageIcon,
     createHotspotRecord: createHotspotRecord,
+    createImageHotspotRecord: createImageHotspotRecord,
     refreshPolyStyle: refreshPolyStyle,
     applyTitleHotspot: applyTitleHotspot,
     removeTitleHotspot: removeTitleHotspot,

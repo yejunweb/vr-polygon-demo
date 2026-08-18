@@ -27,6 +27,7 @@
     settingsBack: document.getElementById("btn-settings-back"),
     pickPoly: document.getElementById("pick-poly"),
     pickLine: document.getElementById("pick-line"),
+    pickImage: document.getElementById("pick-image"),
     finish: document.getElementById("btn-finish"),
     undo: document.getElementById("btn-undo"),
     remove: document.getElementById("btn-delete"),
@@ -55,7 +56,28 @@
     titleFixed: document.getElementById("input-title-fixed"),
     titleHover: document.getElementById("input-title-hover"),
     titleToggle: document.getElementById("btn-title-toggle"),
-    titleAccordion: document.getElementById("title-settings")
+    titleAccordion: document.getElementById("title-settings"),
+    imageZoom: document.getElementById("input-image-zoom"),
+    imageFixed: document.getElementById("input-image-fixed"),
+    imageLock: document.getElementById("input-image-lock"),
+    imageEdge: document.getElementById("input-image-edge"),
+    imageNudge: document.getElementById("image-nudge"),
+    imageScaleX: document.getElementById("input-image-scalex"),
+    imageScaleY: document.getElementById("input-image-scaley"),
+    imageScaleXValue: document.getElementById("image-scalex-value"),
+    imageScaleYValue: document.getElementById("image-scaley-value"),
+    imageRx: document.getElementById("input-image-rx"),
+    imageRy: document.getElementById("input-image-ry"),
+    imageRz: document.getElementById("input-image-rz"),
+    imageRxValue: document.getElementById("image-rx-value"),
+    imageRyValue: document.getElementById("image-ry-value"),
+    imageRzValue: document.getElementById("image-rz-value"),
+    imageAdvTabs: document.getElementById("image-adv-tabs"),
+    imageAdvDetail: document.getElementById("image-adv-detail"),
+    imageAdvMatting: document.getElementById("image-adv-matting"),
+    imageAdvToggle: document.getElementById("btn-image-adv-toggle"),
+    imageAdvanced: document.getElementById("image-advanced"),
+    imageReset: document.getElementById("btn-image-reset")
   };
 
   var ignorePanoClick = false;
@@ -88,6 +110,12 @@
   function polyRecords() {
     return allRecords().filter(function (hs) {
       return HS.isPolyType(hs.icon && hs.icon.type);
+    });
+  }
+
+  function imageRecords() {
+    return allRecords().filter(function (hs) {
+      return HS.isImageType(hs.icon && hs.icon.type);
     });
   }
 
@@ -241,7 +269,11 @@
 
   function setPolyHotspotsEnabled(enabled) {
     var pano = krpano();
+    if (!pano) return;
     polyRecords().forEach(function (hs) {
+      pano.set(HS.hsPath(HS.safeName(hs.id), "enabled"), enabled);
+    });
+    imageRecords().forEach(function (hs) {
       pano.set(HS.hsPath(HS.safeName(hs.id), "enabled"), enabled);
     });
   }
@@ -260,14 +292,17 @@
     if (!record) return;
     var icon = record.icon || {};
     var isPoly = HS.isPolyType(icon.type);
+    var isImage = HS.isImageType(icon.type);
     els.title.value = record.title || "";
     els.settingsTitle.textContent = HS.typeLabel(icon.type) + "设置";
     els.polySettings.hidden = !isPoly;
-    els.imageSettings.hidden = isPoly;
-    els.nameField.hidden = isPoly;
+    els.imageSettings.hidden = !isImage;
+    els.nameField.hidden = isPoly || isImage;
+    if (els.titleAccordion) els.titleAccordion.hidden = !isPoly && !isImage;
     els.fillField.hidden = icon.type !== HS.TYPE_POLYGON;
+    if (isImage) fillImageForm(record);
+    if (isPoly || isImage) fillTitleForm(record);
     if (!isPoly) return;
-    fillTitleForm(record);
     var border = styleTab === "hover" ? icon.overBorderColor : icon.borderColor;
     var fill = styleTab === "hover" ? icon.overFillColor : icon.fillColor;
     var width = styleTab === "hover"
@@ -289,7 +324,13 @@
 
   function writeFormToIcon() {
     var record = currentRecord();
-    if (!record || !HS.isPolyType(record.icon && record.icon.type)) return null;
+    if (!record || !record.icon) return null;
+    if (HS.isImageType(record.icon.type)) {
+      writeImageForm(record);
+      writeTitleForm(record);
+      return record;
+    }
+    if (!HS.isPolyType(record.icon.type)) return null;
     var icon = record.icon;
     var fallbackBorder = { hex: 0x286efa, alpha: 1, r: 40, g: 110, b: 250 };
     var fallbackFill = { hex: 0x0f0f0f, alpha: 0.5, r: 15, g: 15, b: 15 };
@@ -310,6 +351,144 @@
     icon.blink = els.blink.checked ? 1 : 0;
     writeTitleForm(record);
     return record;
+  }
+
+  function pctFromScale(scale) {
+    var n = Number(scale);
+    if (isNaN(n)) n = 0.037;
+    return Math.max(1, Math.min(200, n * 100));
+  }
+
+  function formatPct(value) {
+    return Number(value).toFixed(1) + "%";
+  }
+
+  function formatDeg(value) {
+    return Number(value).toFixed(1) + "°";
+  }
+
+  function fillImageForm(record) {
+    var icon = record.icon || {};
+    var scaleX = pctFromScale(icon.scaleX);
+    var scaleY = pctFromScale(icon.scaleY != null ? icon.scaleY : icon.scaleX);
+    els.imageZoom.checked = icon.zoom === true || icon.zoom === 1;
+    els.imageFixed.checked = icon.stick !== 1;
+    els.imageLock.checked = icon.scaleLock === 1;
+    els.imageEdge.value = icon.edge || "center";
+    els.imageScaleX.value = scaleX;
+    els.imageScaleY.value = scaleY;
+    els.imageScaleXValue.textContent = formatPct(scaleX);
+    els.imageScaleYValue.textContent = formatPct(scaleY);
+    els.imageRx.value = icon.rx || 0;
+    els.imageRy.value = icon.ry || 0;
+    els.imageRz.value = icon.rz != null ? icon.rz : (icon.rotate || 0);
+    els.imageRxValue.textContent = formatDeg(els.imageRx.value);
+    els.imageRyValue.textContent = formatDeg(els.imageRy.value);
+    els.imageRzValue.textContent = formatDeg(els.imageRz.value);
+    if (els.imageAdvTabs) {
+      Array.prototype.forEach.call(els.imageAdvTabs.querySelectorAll(".tab"), function (btn) {
+        btn.classList.toggle("active", btn.getAttribute("data-tab") === "detail");
+      });
+      els.imageAdvDetail.hidden = false;
+      els.imageAdvMatting.hidden = true;
+    }
+  }
+
+  function writeImageForm(record) {
+    if (!record || !record.icon) return;
+    var icon = record.icon;
+    icon.zoom = els.imageZoom.checked;
+    icon.stick = els.imageFixed.checked ? 0 : 1;
+    icon.scaleLock = els.imageLock.checked ? 1 : 0;
+    icon.edge = els.imageEdge.value || "center";
+    icon.scaleX = Number(els.imageScaleX.value) / 100;
+    icon.scaleY = Number(els.imageScaleY.value) / 100;
+    icon.rx = Number(els.imageRx.value) || 0;
+    icon.ry = Number(els.imageRy.value) || 0;
+    icon.rz = Number(els.imageRz.value) || 0;
+    icon.rotate = icon.rz;
+  }
+
+  function applyLiveImage() {
+    var pano = krpano();
+    var record = currentRecord();
+    if (!pano || !record || !HS.isImageType(record.icon && record.icon.type)) return;
+    writeImageForm(record);
+    writeTitleForm(record);
+    HS.applyImageAppearance(pano, record);
+    HS.applyTitleHotspot(pano, record, { editable: true });
+    renderList();
+  }
+
+  function syncImageInteraction() {
+    var pano = krpano();
+    if (!pano) return;
+    imageRecords().forEach(function (hs) {
+      var name = HS.safeName(hs.id);
+      var selected = !drawing && hs.id === selectedId;
+      pano.set(HS.hsPath(name, "ondown"), selected ? "drag_image();" : "");
+      pano.set(HS.hsPath(name, "onup"), selected ? "js(onImageDragEnd());" : "");
+      pano.set(HS.hsPath(name, "capture"), selected);
+      pano.set(HS.hsPath(name, "onclick"), selected ? "" : "js(onEditorSelectHotspot(" + HS.quote(name) + "));");
+    });
+  }
+
+  function moveImageBy(dath, datv) {
+    var record = currentRecord();
+    if (!record || !HS.isImageType(record.icon && record.icon.type)) return;
+    var oldAth = Number(record.icon.ath) || 0;
+    var oldAtv = Number(record.icon.atv) || 0;
+    record.icon.ath = oldAth + dath;
+    record.icon.atv = oldAtv + datv;
+    var ts = HS.ensureTitleSetting(record);
+    if (ts.ath == null) ts.ath = oldAth;
+    if (ts.atv == null) ts.atv = oldAtv;
+    ts.ath = Number(ts.ath) + dath;
+    ts.atv = Number(ts.atv) + datv;
+    var pano = krpano();
+    if (pano) {
+      HS.applyImageAppearance(pano, record);
+      HS.applyTitleHotspot(pano, record, { editable: true });
+    }
+  }
+
+  function onImageScaleInput(axis) {
+    var record = currentRecord();
+    if (!record || !record.icon) return;
+    var x = Number(els.imageScaleX.value);
+    var y = Number(els.imageScaleY.value);
+    if (els.imageLock.checked) {
+      var sx = pctFromScale(record.icon.scaleX);
+      var sy = pctFromScale(record.icon.scaleY != null ? record.icon.scaleY : record.icon.scaleX);
+      var ratio = sx ? sy / sx : 1;
+      if (axis === "x") {
+        y = Math.max(1, Math.min(200, Number((x * ratio).toFixed(1))));
+        els.imageScaleY.value = y;
+      } else {
+        x = ratio ? Math.max(1, Math.min(200, Number((y / ratio).toFixed(1)))) : y;
+        els.imageScaleX.value = x;
+      }
+    }
+    els.imageScaleXValue.textContent = formatPct(els.imageScaleX.value);
+    els.imageScaleYValue.textContent = formatPct(els.imageScaleY.value);
+    applyLiveImage();
+  }
+
+  function resetImageAdvanced() {
+    var record = currentRecord();
+    if (!record || !record.icon) return;
+    var defaults = HS.defaultImageIcon();
+    record.icon.edge = defaults.edge;
+    record.icon.scaleLock = defaults.scaleLock;
+    record.icon.scaleX = defaults.scaleX;
+    record.icon.scaleY = defaults.scaleY;
+    record.icon.rx = defaults.rx;
+    record.icon.ry = defaults.ry;
+    record.icon.rz = defaults.rz;
+    record.icon.rotate = defaults.rotate;
+    fillImageForm(record);
+    applyLiveImage();
+    setStatus("已重置图片细节设置", "ok");
   }
 
   function fillTitleForm(record) {
@@ -395,9 +574,12 @@
     showPanel("settings");
     fillForm(record);
     clearVertices();
+    syncImageInteraction();
+    var pano = krpano();
+    if (pano) HS.applyTitleHotspot(pano, record, { editable: true });
     updateDrawButtons();
     renderList();
-    setStatus("图片热点");
+    setStatus("拖动图片调整位置，或在侧栏修改样式");
   }
 
   function inspectShape(record) {
@@ -412,6 +594,7 @@
     renderInspectAnchor(record);
     updateDrawButtons();
     renderList();
+    syncImageInteraction();
     setStatus("点击最新端点上的编辑图标开始改点");
   }
 
@@ -453,6 +636,7 @@
     renderInspectAnchor(record);
     updateDrawButtons();
     renderList();
+    syncImageInteraction();
   }
 
   function backToList(cancelIfDrawing) {
@@ -463,7 +647,8 @@
     showPanel("list");
     renderList();
     updateDrawButtons();
-    setStatus("从列表进入热点设置，或添加多边形 / 折线");
+    syncImageInteraction();
+    setStatus("从列表进入热点设置，或添加多边形 / 折线 / 图片");
   }
 
   function renderDraft() {
@@ -523,9 +708,25 @@
     showPanel("settings");
     fillForm(draft);
     updateDrawButtons();
+    syncImageInteraction();
     setStatus(type === HS.TYPE_POLYGON
       ? "绘制多边形：点击全景加点，至少 3 点后点完成"
       : "绘制折线：点击全景加点，至少 2 点后点完成");
+  }
+
+  function startImage() {
+    if (drawing) cancelDraw(true);
+    var pano = krpano();
+    if (!pano) return;
+    var ath = Number(pano.get("view.hlookat")) || 0;
+    var atv = Number(pano.get("view.vlookat")) || 0;
+    var record = HS.createImageHotspotRecord(ath, atv, HS.nextZOrder(tourData));
+    var sceneName = HS.getScene(tourData) && HS.getScene(tourData).name;
+    if (sceneName) record.title = sceneName;
+    HS.upsertHotspot(tourData, record);
+    HS.addImageHotspot(pano, record, { editable: true });
+    openSettings(record.id);
+    setStatus("已添加图片热点，可拖动位置或在侧栏调整，记得保存", "ok");
   }
 
   function cancelDraw(silent) {
@@ -545,6 +746,7 @@
       }
     }
     updateDrawButtons();
+    syncImageInteraction();
     if (!silent) setStatus("已取消绘制");
   }
 
@@ -621,6 +823,7 @@
     showPanel("list");
     renderList();
     updateDrawButtons();
+    syncImageInteraction();
     setStatus("已删除，记得保存", "ok");
   }
 
@@ -647,7 +850,7 @@
     HS.applyHotspots(pano, tourData, { editable: true });
     renderList();
     updateDrawButtons();
-    setStatus("从列表进入热点设置，或添加多边形 / 折线");
+    setStatus("从列表进入热点设置，或添加多边形 / 折线 / 图片");
   };
 
   window.onEditorPanoClick = function () {
@@ -696,6 +899,30 @@
     renderList();
   };
 
+  window.onImageDrag = function (name) {
+    var pano = krpano();
+    var record = currentRecord();
+    if (!pano || !record || !HS.isImageType(record.icon && record.icon.type)) return;
+    var ath = Number(pano.get(HS.hsPath(name, "ath")));
+    var atv = Number(pano.get(HS.hsPath(name, "atv")));
+    var oldAth = Number(record.icon.ath || 0);
+    var oldAtv = Number(record.icon.atv || 0);
+    var dath = ath - oldAth;
+    var datv = atv - oldAtv;
+    var ts = record.titleSetting || HS.ensureTitleSetting(record);
+    var titleAth = ts.ath != null ? Number(ts.ath) : oldAth;
+    var titleAtv = ts.atv != null ? Number(ts.atv) : oldAtv;
+    record.icon.ath = ath;
+    record.icon.atv = atv;
+    ts.ath = titleAth + dath;
+    ts.atv = titleAtv + datv;
+    HS.applyTitleHotspot(pano, record, { editable: true });
+  };
+
+  window.onImageDragEnd = function () {
+    setStatus("图片位置已更新，记得保存", "ok");
+  };
+
   window.onTitleDrag = function (name) {
     var pano = krpano();
     var record = currentRecord();
@@ -741,6 +968,9 @@
   els.settingsBack.addEventListener("click", function () { backToList(true); });
   els.pickPoly.addEventListener("click", function () { startDraw(HS.TYPE_POLYGON); });
   els.pickLine.addEventListener("click", function () { startDraw(HS.TYPE_POLYLINE); });
+  if (els.pickImage) {
+    els.pickImage.addEventListener("click", startImage);
+  }
   els.finish.addEventListener("click", finishDraw);
   els.undo.addEventListener("click", undoPoint);
   els.remove.addEventListener("click", deleteSelected);
@@ -807,6 +1037,60 @@
   els.blink.addEventListener("change", onStyleChange);
   els.resetBorder.addEventListener("click", resetCurrentColors);
   els.resetFill.addEventListener("click", resetCurrentColors);
+
+  [els.imageZoom, els.imageFixed, els.imageLock, els.imageEdge].forEach(function (input) {
+    if (!input) return;
+    input.addEventListener("change", applyLiveImage);
+  });
+  if (els.imageScaleX) {
+    els.imageScaleX.addEventListener("input", function () { onImageScaleInput("x"); });
+  }
+  if (els.imageScaleY) {
+    els.imageScaleY.addEventListener("input", function () { onImageScaleInput("y"); });
+  }
+  function bindRotation(input, label) {
+    if (!input || !label) return;
+    input.addEventListener("input", function () {
+      label.textContent = formatDeg(input.value);
+      applyLiveImage();
+    });
+  }
+  bindRotation(els.imageRx, els.imageRxValue);
+  bindRotation(els.imageRy, els.imageRyValue);
+  bindRotation(els.imageRz, els.imageRzValue);
+  if (els.imageNudge) {
+    els.imageNudge.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-dir]");
+      if (!btn) return;
+      var dir = btn.getAttribute("data-dir");
+      var step = 1;
+      if (dir === "up") moveImageBy(0, -step);
+      else if (dir === "down") moveImageBy(0, step);
+      else if (dir === "left") moveImageBy(-step, 0);
+      else if (dir === "right") moveImageBy(step, 0);
+      setStatus("图片位置已更新，记得保存", "ok");
+    });
+  }
+  if (els.imageAdvTabs) {
+    els.imageAdvTabs.addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".tab");
+      if (!btn) return;
+      var tab = btn.getAttribute("data-tab") || "detail";
+      Array.prototype.forEach.call(els.imageAdvTabs.querySelectorAll(".tab"), function (item) {
+        item.classList.toggle("active", item === btn);
+      });
+      els.imageAdvDetail.hidden = tab !== "detail";
+      els.imageAdvMatting.hidden = tab !== "matting";
+    });
+  }
+  if (els.imageAdvToggle) {
+    els.imageAdvToggle.addEventListener("click", function () {
+      els.imageAdvanced.classList.toggle("open");
+    });
+  }
+  if (els.imageReset) {
+    els.imageReset.addEventListener("click", resetImageAdvanced);
+  }
 
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Enter" && drawing) {
