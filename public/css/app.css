@@ -414,8 +414,71 @@ a.btn {
   color: #8b93a2;
 }
 
-#btn-delete {
-  margin: 4px 0 8px;
+.switch-row.compact {
+  margin-top: 12px;
+}
+
+.accordion {
+  margin-top: 18px;
+  border-top: 1px solid #2a3140;
+  padding-top: 10px;
+}
+
+.accordion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.accordion .chevron {
+  color: #8b93a2;
+  transition: transform 0.15s ease;
+}
+
+.accordion:not(.open) .chevron {
+  transform: rotate(-90deg);
+}
+
+.accordion:not(.open) .accordion-body {
+  display: none !important;
+}
+
+.textarea-wrap {
+  position: relative;
+  margin-top: 8px;
+}
+
+.textarea-wrap textarea {
+  width: 100%;
+  min-height: 78px;
+  resize: vertical;
+  border: 1px solid #2e3644;
+  border-radius: 8px;
+  background: #1b2028;
+  color: #fff;
+  padding: 10px 10px 22px;
+  outline: none;
+  font: inherit;
+}
+
+.textarea-wrap textarea:focus {
+  border-color: #286efa;
+}
+
+.char-count {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-size: 11px;
+  color: #8b93a2;
 }
 
 .editor-page #pano {

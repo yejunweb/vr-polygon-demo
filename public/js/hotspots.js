@@ -14,7 +14,7 @@
     var g = parts[1] || 0;
     var b = parts[2] || 0;
     var a = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : 1;
-    return { hex: (r << 16) + (g << 8) + b, alpha: a, r: r, g: g, b: b };
+    return { hex: (r << 16) + (g << 8) + b, alpha: a, r: r, g: g, b: b, css: "rgba(" + r + "," + g + "," + b + "," + a + ")" };
   }
 
   function toHexString(hexNum) {
@@ -150,6 +150,7 @@
       }
     }
 
+    if (hs.id !== "_draft") applyTitleHotspot(krpano, hs, options);
     return name;
   }
 
@@ -185,6 +186,109 @@
       krpano.set(hsPath(name, "enabled"), false);
     }
     return name;
+  }
+
+  function titleHotspotName(id) {
+    return safeName(id) + "_title";
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function defaultTitleSetting() {
+    return {
+      align: "center",
+      edge: "bottom",
+      ox: 0,
+      oy: -22,
+      font: {
+        fontSize: 14,
+        fontColor: "255,255,255,1",
+        fontFaceType: 0
+      },
+      fontWeight: "normal",
+      background: {
+        type: 0,
+        bgColor: "0,0,0,0.55",
+        bgRoundedge: 4
+      },
+      zoom: true,
+      fixedHV: 0,
+      showWhenHoving: 0,
+      stick: 0
+    };
+  }
+
+  function ensureTitleSetting(hs) {
+    if (!hs.titleSetting) hs.titleSetting = defaultTitleSetting();
+    var ts = hs.titleSetting;
+    if (ts.zoom == null) ts.zoom = true;
+    if (ts.fixedHV == null) ts.fixedHV = 0;
+    if (ts.showWhenHoving == null) ts.showWhenHoving = 0;
+    if (hs.showTitle == null) hs.showTitle = 1;
+    if (ts.ath == null && hs.icon) ts.ath = hs.icon.ath;
+    if (ts.atv == null && hs.icon) ts.atv = hs.icon.atv;
+    return ts;
+  }
+
+  function applyTitleHotspot(krpano, hs, options) {
+    if (!krpano || !hs || !isPolyType(hs.icon && hs.icon.type)) return null;
+    var ts = ensureTitleSetting(hs);
+    var name = titleHotspotName(hs.id);
+    var parent = safeName(hs.id);
+    var font = ts.font || {};
+    var fontColor = parseRgba(font.fontColor, { hex: 0xffffff, alpha: 1, r: 255, g: 255, b: 255, css: "rgba(255,255,255,1)" });
+    var bg = parseRgba((ts.background || {}).bgColor, { hex: 0x000000, alpha: 0.55, r: 0, g: 0, b: 0, css: "rgba(0,0,0,0.55)" });
+    var fontSize = font.fontSize || 14;
+    var hoverOnly = ts.showWhenHoving === 1;
+    var show = hs.showTitle !== 0;
+    var visible = show && (options && options.editable ? true : !hoverOnly);
+    var exists = krpano.get(hsPath(name, "name"));
+    if (!exists) {
+      krpano.call("addhotspot(" + quote(name) + ")");
+      krpano.call("callwith(hotspot[" + quote(name) + "], loadstyle(title_hotspot));");
+    }
+    krpano.set(hsPath(name, "html"), escapeHtml(hs.title || ""));
+    krpano.set(hsPath(name, "ath"), ts.ath != null ? ts.ath : hs.icon.ath);
+    krpano.set(hsPath(name, "atv"), ts.atv != null ? ts.atv : hs.icon.atv);
+    krpano.set(hsPath(name, "edge"), ts.edge || "bottom");
+    krpano.set(hsPath(name, "oy"), ts.oy != null ? ts.oy : -22);
+    krpano.set(hsPath(name, "ox"), ts.ox || 0);
+    krpano.set(hsPath(name, "zoom"), ts.zoom === true || ts.zoom === 1);
+    krpano.set(hsPath(name, "distorted"), ts.fixedHV !== 1);
+    krpano.set(hsPath(name, "bgcolor"), bg.hex);
+    krpano.set(hsPath(name, "bgalpha"), bg.alpha);
+    krpano.set(hsPath(name, "bgroundedge"), (ts.background && ts.background.bgRoundedge) || 4);
+    krpano.set(hsPath(name, "css"),
+      "color:" + fontColor.css + ";font-family:PingFang SC,Microsoft YaHei,sans-serif;font-size:" +
+      fontSize + "px;text-align:center;white-space:nowrap;line-height:1.4;"
+    );
+    krpano.set(hsPath(name, "visible"), visible);
+    if (options && options.editable) {
+      krpano.set(hsPath(name, "enabled"), true);
+      krpano.set(hsPath(name, "capture"), true);
+      krpano.set(hsPath(name, "handcursor"), true);
+      krpano.set(hsPath(name, "zorder"), 40);
+      krpano.set(hsPath(name, "ondown"), "drag_title();");
+      krpano.set(hsPath(name, "onup"), "js(onTitleDragEnd());");
+    } else {
+      krpano.set(hsPath(name, "enabled"), false);
+      krpano.set(hsPath(name, "capture"), false);
+      krpano.set(hsPath(name, "ondown"), "");
+      krpano.set(hsPath(name, "onup"), "");
+    }
+    krpano.set(hsPath(parent, "titlehs"), name);
+    krpano.set(hsPath(parent, "hover_title"), !!(show && hoverOnly && !(options && options.editable)));
+    return name;
+  }
+
+  function removeTitleHotspot(krpano, id) {
+    removeHotspot(krpano, titleHotspotName(id));
   }
 
   function getScene(data) {
@@ -269,12 +373,16 @@
     icon.ath = center.ath;
     icon.atv = center.atv;
     icon.points = points.slice();
+    var titleSetting = defaultTitleSetting();
+    titleSetting.ath = center.ath;
+    titleSetting.atv = center.atv;
     return {
       id: "h_" + Math.random().toString(36).slice(2, 12) + Date.now().toString(36),
       zOrder: zOrder || 1,
       icon: icon,
       title: isLine ? "折线" : "多边形",
-      showTitle: 0,
+      showTitle: 1,
+      titleSetting: titleSetting,
       visible: 1,
       locked: 0,
       data: { code: 9, title: "" }
@@ -383,6 +491,12 @@
     defaultPolyIcon: defaultPolyIcon,
     createHotspotRecord: createHotspotRecord,
     refreshPolyStyle: refreshPolyStyle,
+    applyTitleHotspot: applyTitleHotspot,
+    removeTitleHotspot: removeTitleHotspot,
+    titleHotspotName: titleHotspotName,
+    ensureTitleSetting: ensureTitleSetting,
+    defaultTitleSetting: defaultTitleSetting,
+    escapeHtml: escapeHtml,
     actionLabel: actionLabel,
     nextZOrder: nextZOrder,
     upsertHotspot: upsertHotspot,

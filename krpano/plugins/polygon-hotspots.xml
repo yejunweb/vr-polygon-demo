@@ -46,6 +46,27 @@
 		zorder="10"
 	/>
 
+	<style name="title_hotspot"
+		type="text"
+		html=""
+		css="color:#FFFFFF; font-family:PingFang SC,Microsoft YaHei,sans-serif; font-size:14px; text-align:center; white-space:nowrap; line-height:1.4;"
+		bg="true"
+		bgcolor="0x000000"
+		bgalpha="0.55"
+		bgroundedge="4"
+		padding="6 10"
+		edge="bottom"
+		oy="-22"
+		zorder="20"
+		capture="false"
+		enabled="false"
+		handcursor="false"
+		renderer="css3d"
+		distorted="false"
+		zoom="true"
+		oversampling="2"
+	/>
+
 	<action name="on_polygon_over">
 		if(blink == true,
 			stoptween(fillcolor);
@@ -59,6 +80,9 @@
 		if(overbordercolor !== null, copy(bordercolor, overbordercolor););
 		if(overborderwidth !== null, copy(borderwidth, overborderwidth););
 		if(overborderalpha !== null, copy(borderalpha, overborderalpha););
+		if(titlehs !== null AND hover_title === true,
+			set(hotspot[get(titlehs)].visible, true);
+		);
 	</action>
 
 	<action name="on_polygon_out">
@@ -67,6 +91,9 @@
 		if(normalbordercolor !== null, copy(bordercolor, normalbordercolor););
 		if(normalborderwidth !== null, copy(borderwidth, normalborderwidth););
 		if(normalborderalpha !== null, copy(borderalpha, normalborderalpha););
+		if(titlehs !== null AND hover_title === true,
+			set(hotspot[get(titlehs)].visible, false);
+		);
 		if(blink == true, polygon_blink_enable(get(name)););
 	</action>
 

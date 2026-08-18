@@ -46,8 +46,23 @@
     widthValue: document.getElementById("width-value"),
     blink: document.getElementById("input-blink"),
     resetBorder: document.getElementById("reset-border"),
-    resetFill: document.getElementById("reset-fill")
+    resetFill: document.getElementById("reset-fill"),
+    nameField: document.getElementById("name-field"),
+    titleText: document.getElementById("input-title-text"),
+    titleCount: document.getElementById("title-count"),
+    showTitle: document.getElementById("input-show-title"),
+    titleZoom: document.getElementById("input-title-zoom"),
+    titleFixed: document.getElementById("input-title-fixed"),
+    titleHover: document.getElementById("input-title-hover"),
+    titleToggle: document.getElementById("btn-title-toggle"),
+    titleAccordion: document.getElementById("title-settings")
   };
+
+  var ignorePanoClick = false;
+  var VERTEX_BLUE = "#286EFA";
+  var VERTEX_RED = "#E23C3C";
+  var ACT_OK = "vtx_act_ok";
+  var ACT_DEL = "vtx_act_del";
 
   function krpano() {
     return window.krpano || null;
@@ -142,22 +157,65 @@
     vertexMap = {};
   }
 
-  function addVertex(targetName, index, point, isDraft) {
+  function vertexHtml(color) {
+    return "<div style=\"width:18px;height:18px;border-radius:50%;background:" + color +
+      ";display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(255,255,255,.25);\">" +
+      "<div style=\"width:7px;height:7px;border-radius:50%;background:#fff;\"></div></div>";
+  }
+
+  function actionHtml(kind) {
+    var icon = kind === "ok"
+      ? "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg>"
+      : "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"3 6 5 6 21 6\"/><path d=\"M19 6l-1 14H6L5 6\"/><path d=\"M10 11v6M14 11v6\"/><path d=\"M9 6V4h6v2\"/></svg>";
+    return "<div style=\"width:32px;height:32px;border-radius:6px;background:rgba(20,22,26,.78);display:flex;align-items:center;justify-content:center;\">" + icon + "</div>";
+  }
+
+  function addVertex(targetName, index, point, isDraft, isLatest) {
     var pano = krpano();
     var name = "vtx_" + index;
     pano.call("addhotspot(" + HS.quote(name) + ")");
     pano.call("callwith(hotspot[" + HS.quote(name) + "], loadstyle(poly_vertex));");
     pano.set(HS.hsPath(name, "ath"), point.ath);
     pano.set(HS.hsPath(name, "atv"), point.atv);
-    pano.set(HS.hsPath(name, "html"), String(index + 1));
+    pano.set(HS.hsPath(name, "html"), vertexHtml(isLatest ? VERTEX_RED : VERTEX_BLUE));
     vertexNames.push(name);
     vertexMap[name] = { targetName: targetName, index: index, isDraft: !!isDraft };
+  }
+
+  function addActionButton(name, point, ox, kind) {
+    var pano = krpano();
+    pano.call("addhotspot(" + HS.quote(name) + ")");
+    pano.call("callwith(hotspot[" + HS.quote(name) + "], loadstyle(poly_act_btn));");
+    pano.set(HS.hsPath(name, "ath"), point.ath);
+    pano.set(HS.hsPath(name, "atv"), point.atv);
+    pano.set(HS.hsPath(name, "ox"), ox);
+    pano.set(HS.hsPath(name, "html"), actionHtml(kind));
+    pano.set(HS.hsPath(name, "onclick"), kind === "ok"
+      ? "js(onDrawFinishClick());"
+      : "js(onDrawDeleteClick());");
+    vertexNames.push(name);
+  }
+
+  function syncActionButtons(point) {
+    var pano = krpano();
+    if (!pano || !point) return;
+    [ACT_OK, ACT_DEL].forEach(function (name) {
+      if (pano.get(HS.hsPath(name, "name"))) {
+        pano.set(HS.hsPath(name, "ath"), point.ath);
+        pano.set(HS.hsPath(name, "atv"), point.atv);
+      }
+    });
   }
 
   function renderVertices(targetName, points, isDraft) {
     clearVertices();
     for (var i = 0; i < points.length; i++) {
-      addVertex(targetName, i, points[i], isDraft);
+      addVertex(targetName, i, points[i], isDraft, i === points.length - 1);
+    }
+    if (points.length) {
+      var last = points[points.length - 1];
+      addActionButton(ACT_OK, last, -20, "ok");
+      addActionButton(ACT_DEL, last, 20, "del");
     }
   }
 
@@ -192,8 +250,10 @@
     els.settingsTitle.textContent = HS.typeLabel(icon.type) + "设置";
     els.polySettings.hidden = !isPoly;
     els.imageSettings.hidden = isPoly;
+    els.nameField.hidden = isPoly;
     els.fillField.hidden = icon.type !== HS.TYPE_POLYGON;
     if (!isPoly) return;
+    fillTitleForm(record);
     var border = styleTab === "hover" ? icon.overBorderColor : icon.borderColor;
     var fill = styleTab === "hover" ? icon.overFillColor : icon.fillColor;
     var width = styleTab === "hover"
@@ -234,8 +294,42 @@
       }
     }
     icon.blink = els.blink.checked ? 1 : 0;
-    record.title = els.title.value.trim() || HS.typeLabel(icon.type);
+    writeTitleForm(record);
     return record;
+  }
+
+  function fillTitleForm(record) {
+    var ts = HS.ensureTitleSetting(record);
+    var text = record.title || "";
+    els.title.value = text;
+    els.titleText.value = text;
+    els.titleCount.textContent = text.length + "/500";
+    els.showTitle.checked = record.showTitle !== 0;
+    els.titleZoom.checked = ts.zoom === true || ts.zoom === 1;
+    els.titleFixed.checked = ts.fixedHV === 1;
+    els.titleHover.checked = ts.showWhenHoving === 1;
+  }
+
+  function writeTitleForm(record) {
+    if (!record) return;
+    var ts = HS.ensureTitleSetting(record);
+    record.title = (els.titleText.value || els.title.value || "").trim() || HS.typeLabel(record.icon && record.icon.type);
+    record.showTitle = els.showTitle.checked ? 1 : 0;
+    ts.zoom = els.titleZoom.checked;
+    ts.fixedHV = els.titleFixed.checked ? 1 : 0;
+    ts.showWhenHoving = els.titleHover.checked ? 1 : 0;
+    els.title.value = record.title;
+    els.titleText.value = record.title;
+    els.titleCount.textContent = String(record.title || "").length + "/500";
+  }
+
+  function applyLiveTitle() {
+    var pano = krpano();
+    var record = currentRecord();
+    if (!pano || !record || drawing) return;
+    writeTitleForm(record);
+    HS.applyTitleHotspot(pano, record, { editable: true });
+    renderList();
   }
 
   function onStyleChange() {
@@ -275,21 +369,61 @@
   }
 
   function openSettings(id) {
+    var record = HS.findHotspot(tourData, id);
+    if (!record) return;
+    if (HS.isPolyType(record.icon && record.icon.type)) {
+      resumeDraw(record);
+      return;
+    }
+    if (drawing) cancelDraw(true);
     selectedId = id;
     styleTab = "normal";
-    var record = HS.findHotspot(tourData, id);
     showPanel("settings");
     fillForm(record);
+    clearVertices();
     updateDrawButtons();
     renderList();
-    if (record && HS.isPolyType(record.icon && record.icon.type) && record.icon.points) {
-      renderVertices(HS.safeName(record.id), HS.unwrapPoints(record.icon.points), false);
-      applyLiveStyle();
-      setStatus("拖动顶点改形状，或在右侧调整颜色 / 粗细 / 动画");
-    } else {
-      clearVertices();
-      setStatus("图片热点");
-    }
+    setStatus("图片热点");
+  }
+
+  function resumeDraw(record) {
+    if (drawing && draft && draft.existingId === record.id) return;
+    if (drawing) cancelDraw(true);
+    var pano = krpano();
+    selectedId = record.id;
+    drawing = true;
+    HS.ensureTitleSetting(record);
+    draft = {
+      type: record.icon.type,
+      points: HS.unwrapPoints(record.icon.points).slice(),
+      title: record.title,
+      icon: record.icon,
+      showTitle: record.showTitle,
+      titleSetting: record.titleSetting,
+      existingId: record.id
+    };
+    HS.removeHotspot(pano, HS.safeName(record.id));
+    setPolyHotspotsEnabled(false);
+    setDrawEvents(true);
+    showPanel("settings");
+    fillForm(draft);
+    renderDraft();
+    updateDrawButtons();
+    renderList();
+    setStatus(record.icon.type === HS.TYPE_POLYGON
+      ? "编辑多边形：点击加点，可自由删点，至少 3 点后完成"
+      : "编辑折线：点击加点，可自由删点，至少 2 点后完成");
+  }
+
+  function settleSettings(record) {
+    selectedId = record.id;
+    drawing = false;
+    draft = null;
+    showPanel("settings");
+    fillForm(record);
+    clearVertices();
+    updateDrawButtons();
+    renderList();
   }
 
   function backToList(cancelIfDrawing) {
@@ -311,13 +445,17 @@
       return;
     }
     var asLine = draft.type === HS.TYPE_POLYLINE || draft.points.length < 3;
+    var icon = {};
+    Object.keys(draft.icon).forEach(function (key) {
+      icon[key] = draft.icon[key];
+    });
+    icon.points = draft.points;
     var record = {
       id: DRAFT_NAME,
       zOrder: 999,
       visible: 1,
-      icon: draft.icon
+      icon: icon
     };
-    draft.icon.points = draft.points;
     if (draft.points.length >= 2) {
       HS.addPolyHotspot(pano, record, asLine, { editable: true });
       pano.set(HS.hsPath(DRAFT_NAME, "onclick"), "");
@@ -331,18 +469,21 @@
     if (drawing) cancelDraw(true);
     selectedId = null;
     drawing = true;
+    var sceneName = HS.getScene(tourData) && HS.getScene(tourData).name;
     draft = {
       type: type,
       points: [],
-      title: HS.typeLabel(type),
-      icon: HS.defaultPolyIcon(type)
+      title: sceneName || HS.typeLabel(type),
+      icon: HS.defaultPolyIcon(type),
+      showTitle: 1,
+      titleSetting: HS.defaultTitleSetting()
     };
     styleTab = "normal";
     clearVertices();
     setPolyHotspotsEnabled(false);
     setDrawEvents(true);
     showPanel("settings");
-    fillForm({ title: draft.title, icon: draft.icon });
+    fillForm(draft);
     updateDrawButtons();
     setStatus(type === HS.TYPE_POLYGON
       ? "绘制多边形：点击全景加点，至少 3 点后点完成"
@@ -351,12 +492,20 @@
 
   function cancelDraw(silent) {
     var pano = krpano();
+    var existingId = draft && draft.existingId;
     drawing = false;
     draft = null;
     if (pano) HS.removeHotspot(pano, DRAFT_NAME);
     clearVertices();
     setDrawEvents(false);
     setPolyHotspotsEnabled(true);
+    if (existingId && pano) {
+      var record = HS.findHotspot(tourData, existingId);
+      if (record) {
+        HS.addPolyHotspot(pano, record, record.icon.type === HS.TYPE_POLYLINE, { editable: true });
+        HS.applyTitleHotspot(pano, record, { editable: true });
+      }
+    }
     updateDrawButtons();
     if (!silent) setStatus("已取消绘制");
   }
@@ -370,19 +519,40 @@
     }
     writeFormToIcon();
     var pano = krpano();
-    var record = HS.createHotspotRecord(draft.type, draft.points, HS.nextZOrder(tourData), draft.icon);
-    record.title = draft.title || HS.typeLabel(draft.type);
-    var scene = HS.getScene(tourData);
-    if (scene && scene.name) record.title = els.title.value.trim() || scene.name;
-    HS.upsertHotspot(tourData, record);
+    var record;
+    if (draft.existingId) {
+      record = HS.findHotspot(tourData, draft.existingId);
+      HS.syncRecordPoints(record, draft.points);
+      record.title = draft.title || record.title;
+      record.showTitle = draft.showTitle != null ? draft.showTitle : record.showTitle;
+      record.titleSetting = draft.titleSetting || record.titleSetting;
+    } else {
+      record = HS.createHotspotRecord(draft.type, draft.points, HS.nextZOrder(tourData), draft.icon);
+      record.title = draft.title || HS.typeLabel(draft.type);
+      record.showTitle = draft.showTitle != null ? draft.showTitle : 1;
+      record.titleSetting = draft.titleSetting || HS.defaultTitleSetting();
+      if (record.titleSetting.ath == null) record.titleSetting.ath = record.icon.ath;
+      if (record.titleSetting.atv == null) record.titleSetting.atv = record.icon.atv;
+      HS.upsertHotspot(tourData, record);
+    }
     HS.removeHotspot(pano, DRAFT_NAME);
     drawing = false;
     draft = null;
     setDrawEvents(false);
     setPolyHotspotsEnabled(true);
     HS.addPolyHotspot(pano, record, record.icon.type === HS.TYPE_POLYLINE, { editable: true });
-    openSettings(record.id);
-    setStatus("已添加" + HS.typeLabel(record.icon.type) + "，记得保存", "ok");
+    HS.applyTitleHotspot(pano, record, { editable: true });
+    settleSettings(record);
+    setStatus("已完成" + HS.typeLabel(record.icon.type) + "编辑，记得保存", "ok");
+  }
+
+  function deleteLastEditPoint() {
+    undoPoint();
+  }
+
+  function finishEditVertices() {
+    clearVertices();
+    setStatus("已完成点编辑，可继续改样式或拖动标题", "ok");
   }
 
   function undoPoint() {
@@ -406,6 +576,7 @@
     var pano = krpano();
     var name = HS.safeName(selectedId);
     HS.removeHotspot(pano, name);
+    HS.removeTitleHotspot(pano, selectedId);
     HS.removeHotspotRecord(tourData, selectedId);
     selectedId = null;
     clearVertices();
@@ -442,6 +613,7 @@
   };
 
   window.onEditorPanoClick = function () {
+    if (ignorePanoClick) return;
     var pano = krpano();
     if (!pano || !drawing) return;
     var now = Date.now();
@@ -471,15 +643,46 @@
     pano.set(HS.hsPath(meta.targetName, "point[" + meta.index + "].atv"), atv);
     if (meta.isDraft && draft) {
       draft.points[meta.index] = { ath: ath, atv: atv };
+      if (meta.index === draft.points.length - 1) syncActionButtons(draft.points[meta.index]);
       return;
     }
     var record = HS.findHotspot(tourData, selectedId);
     if (!record) return;
     HS.syncRecordPoints(record, HS.readPoints(pano, meta.targetName));
+    if (meta.index === (record.icon.points || []).length - 1) {
+      syncActionButtons({ ath: ath, atv: atv });
+    }
   };
 
   window.onVertexDragEnd = function () {
     renderList();
+  };
+
+  window.onTitleDrag = function (name) {
+    var pano = krpano();
+    var record = currentRecord();
+    if (!pano || !record) return;
+    var ts = HS.ensureTitleSetting(record);
+    ts.ath = Number(pano.get(HS.hsPath(name, "ath")));
+    ts.atv = Number(pano.get(HS.hsPath(name, "atv")));
+  };
+
+  window.onTitleDragEnd = function () {
+    setStatus("标题位置已更新，记得保存", "ok");
+  };
+
+  window.onDrawFinishClick = function () {
+    ignorePanoClick = true;
+    if (drawing) finishDraw();
+    else finishEditVertices();
+    setTimeout(function () { ignorePanoClick = false; }, 50);
+  };
+
+  window.onDrawDeleteClick = function () {
+    ignorePanoClick = true;
+    if (drawing) undoPoint();
+    else deleteLastEditPoint();
+    setTimeout(function () { ignorePanoClick = false; }, 50);
   };
 
   els.add.addEventListener("click", function () {
@@ -505,9 +708,36 @@
     var record = currentRecord();
     if (!record) return;
     record.title = els.title.value;
+    if (els.titleText) els.titleText.value = els.title.value;
+    if (els.titleCount) els.titleCount.textContent = els.title.value.length + "/500";
     if (drawing && draft) draft.title = els.title.value;
     renderList();
+    if (!drawing) applyLiveTitle();
   });
+  if (els.titleText) {
+    els.titleText.addEventListener("input", function () {
+      var record = currentRecord();
+      if (!record) return;
+      record.title = els.titleText.value;
+      els.title.value = els.titleText.value;
+      els.titleCount.textContent = els.titleText.value.length + "/500";
+      if (drawing && draft) draft.title = els.titleText.value;
+      renderList();
+      if (!drawing) applyLiveTitle();
+    });
+  }
+  [els.showTitle, els.titleZoom, els.titleFixed, els.titleHover].forEach(function (input) {
+    if (!input) return;
+    input.addEventListener("change", function () {
+      if (!drawing) applyLiveTitle();
+      else writeTitleForm(currentRecord());
+    });
+  });
+  if (els.titleToggle) {
+    els.titleToggle.addEventListener("click", function () {
+      els.titleAccordion.classList.toggle("open");
+    });
+  }
   els.tabs.addEventListener("click", function (ev) {
     var btn = ev.target.closest(".tab");
     if (!btn) return;
