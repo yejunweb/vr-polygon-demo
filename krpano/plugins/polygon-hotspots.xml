@@ -1,0 +1,109 @@
+<krpano>
+	<!-- 色块：闭合填充多边形 -->
+	<style name="polygon_fill"
+		type="poly"
+		polyline="false"
+		keep="false"
+		visible="true"
+		enabled="true"
+		hittest="true"
+		handcursor="true"
+		capture="false"
+		zorder="0"
+		subdiv="true"
+		fillalpha="0.5"
+		borderalpha="1.0"
+		borderwidth="2"
+	/>
+
+	<!-- 折线：不闭合、不填充 -->
+	<style name="polygon_line"
+		type="poly"
+		polyline="true"
+		keep="false"
+		visible="true"
+		enabled="true"
+		hittest="true"
+		handcursor="true"
+		capture="false"
+		zorder="1"
+		subdiv="true"
+		fillalpha="0"
+		borderalpha="1.0"
+		borderwidth="2"
+	/>
+
+	<style name="image_hotspot"
+		type="image"
+		keep="false"
+		visible="true"
+		enabled="true"
+		handcursor="true"
+		capture="false"
+		renderer="webgl"
+		zoom="false"
+		edge="center"
+		zorder="10"
+	/>
+
+	<action name="on_polygon_over">
+		if(blink == true,
+			stoptween(fillcolor);
+			stoptween(fillalpha);
+			stoptween(bordercolor);
+			stoptween(borderalpha);
+			stoptween(borderwidth);
+		);
+		if(overfillcolor !== null, copy(fillcolor, overfillcolor););
+		if(overfillalpha !== null, copy(fillalpha, overfillalpha););
+		if(overbordercolor !== null, copy(bordercolor, overbordercolor););
+		if(overborderwidth !== null, copy(borderwidth, overborderwidth););
+		if(overborderalpha !== null, copy(borderalpha, overborderalpha););
+	</action>
+
+	<action name="on_polygon_out">
+		if(normalfillcolor !== null, copy(fillcolor, normalfillcolor););
+		if(normalfillalpha !== null, copy(fillalpha, normalfillalpha););
+		if(normalbordercolor !== null, copy(bordercolor, normalbordercolor););
+		if(normalborderwidth !== null, copy(borderwidth, normalborderwidth););
+		if(normalborderalpha !== null, copy(borderalpha, normalborderalpha););
+		if(blink == true, polygon_blink_enable(get(name)););
+	</action>
+
+	<action name="polygon_blink_enable">
+		if(hotspot[%1].blink == true,
+			if(hotspot[%1].blink_duration === null, set(hotspot[%1].blink_duration, 4););
+			if(hotspot[%1].polyline === true,
+				if(hotspot[%1].bordercolor === hotspot[%1].normalbordercolor AND hotspot[%1].borderwidth === hotspot[%1].normalborderwidth,
+					copy(dest_border_color, hotspot[%1].overbordercolor);
+					copy(dest_border_alpha, hotspot[%1].overborderalpha);
+					copy(dest_border_width, hotspot[%1].overborderwidth);
+				,
+					copy(dest_border_color, hotspot[%1].normalbordercolor);
+					copy(dest_border_alpha, hotspot[%1].normalborderalpha);
+					copy(dest_border_width, hotspot[%1].normalborderwidth);
+				);
+			);
+			if(hotspot[%1].polyline !== true,
+				if(hotspot[%1].fillcolor === hotspot[%1].normalfillcolor AND hotspot[%1].fillalpha === hotspot[%1].normalfillalpha AND hotspot[%1].bordercolor === hotspot[%1].normalbordercolor AND hotspot[%1].borderwidth === hotspot[%1].normalborderwidth,
+					copy(dest_color, hotspot[%1].overfillcolor);
+					copy(dest_alpha, hotspot[%1].overfillalpha);
+					copy(dest_border_color, hotspot[%1].overbordercolor);
+					copy(dest_border_alpha, hotspot[%1].overborderalpha);
+					copy(dest_border_width, hotspot[%1].overborderwidth);
+				,
+					copy(dest_color, hotspot[%1].normalfillcolor);
+					copy(dest_alpha, hotspot[%1].normalfillalpha);
+					copy(dest_border_color, hotspot[%1].normalbordercolor);
+					copy(dest_border_alpha, hotspot[%1].normalborderalpha);
+					copy(dest_border_width, hotspot[%1].normalborderwidth);
+				);
+				tween(hotspot[%1].fillalpha, get(dest_alpha), get(hotspot[%1].blink_duration), linear);
+				tween(hotspot[%1].fillcolor, get(dest_color), get(hotspot[%1].blink_duration), linear);
+			);
+			tween(hotspot[%1].borderalpha, get(dest_border_alpha), get(hotspot[%1].blink_duration), linear);
+			tween(hotspot[%1].borderwidth, get(dest_border_width), get(hotspot[%1].blink_duration), linear);
+			tween(hotspot[%1].bordercolor, get(dest_border_color), get(hotspot[%1].blink_duration), linear, polygon_blink_enable(%1););
+		);
+	</action>
+</krpano>

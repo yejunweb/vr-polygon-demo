@@ -1,0 +1,24 @@
+﻿<krpano version="1.21" title="碧城玖玺" onstart="startup();">
+	<include url="plugins/polygon-hotspots.xml" />
+
+	<action name="startup">
+		loadscene(scene_huakun, null, MERGE);
+	</action>
+
+	<events name="tour_hotspot_events" keep="true"
+		onloadcomplete="if(xml.scene, js(onPanoLoaded()); );"
+	/>
+
+	<scene name="scene_huakun" title="碧城玖玺" thumburl="pano/login/thumb.jpg">
+		<view hlookat="-20" vlookat="32" fovtype="MFOV" fov="100" maxpixelzoom="1.0" fovmin="70" fovmax="120" limitview="auto" />
+		<preview type="CUBESTRIP" url="pano/login/preview.jpg" />
+		<image type="CUBE" multires="true" tilesize="512">
+			<level tiledimagewidth="2048" tiledimageheight="2048">
+				<cube url="pano/login/%s/l2/%v/l2_%s_%v_%h.jpg" />
+			</level>
+			<level tiledimagewidth="1024" tiledimageheight="1024">
+				<cube url="pano/login/%s/l1/%v/l1_%s_%v_%h.jpg" />
+			</level>
+		</image>
+	</scene>
+</krpano>
