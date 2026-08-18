@@ -3,24 +3,104 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>编辑 - 多边形 / 折线热点</title>
+  <title>编辑 - 热点</title>
   <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="editor-page">
   <header class="toolbar">
     <h1>热点编辑</h1>
-    <button class="btn" id="btn-poly" type="button">多边形</button>
-    <button class="btn" id="btn-line" type="button">折线</button>
-    <button class="btn" id="btn-finish" type="button" disabled>完成</button>
-    <button class="btn" id="btn-undo" type="button" disabled>撤销点</button>
-    <button class="btn danger" id="btn-delete" type="button" disabled>删除</button>
     <span class="spacer"></span>
     <button class="btn primary" id="btn-save" type="button">保存</button>
     <a class="btn" href="/preview">预览</a>
   </header>
   <aside class="sidebar">
-    <h2>多边形 / 折线</h2>
-    <ul class="hotspot-list" id="hotspot-list"></ul>
+    <section class="panel" id="panel-list">
+      <div class="sidebar-head">
+        <h2>热点 <span id="hotspot-count">0/500</span></h2>
+      </div>
+      <button class="btn primary btn-block" id="btn-add" type="button">添加热点</button>
+      <div class="search-row">
+        <input id="hotspot-search" type="search" placeholder="搜索热点" autocomplete="off" />
+      </div>
+      <ul class="hotspot-list" id="hotspot-list"></ul>
+    </section>
+
+    <section class="panel" id="panel-picker" hidden>
+      <div class="sidebar-head">
+        <button class="icon-btn" id="btn-picker-back" type="button" title="返回">←</button>
+        <h2>选择热点类型</h2>
+      </div>
+      <button class="type-card" id="pick-poly" type="button">
+        <span class="hs-icon poly" aria-hidden="true"></span>
+        <span>多边形</span>
+      </button>
+      <button class="type-card" id="pick-line" type="button">
+        <span class="hs-icon line" aria-hidden="true"></span>
+        <span>折线</span>
+      </button>
+    </section>
+
+    <section class="panel" id="panel-settings" hidden>
+      <div class="sidebar-head">
+        <button class="icon-btn" id="btn-settings-back" type="button" title="返回">←</button>
+        <h2 id="settings-title">热点设置</h2>
+      </div>
+      <div class="field">
+        <label>名称</label>
+        <input id="input-title" type="text" maxlength="40" />
+      </div>
+      <div class="draw-actions" id="draw-actions" hidden>
+        <button class="btn" id="btn-finish" type="button" disabled>完成绘制</button>
+        <button class="btn" id="btn-undo" type="button" disabled>撤销点</button>
+      </div>
+      <button class="btn danger btn-block" id="btn-delete" type="button">删除热点</button>
+
+      <div id="poly-settings">
+        <div class="tabs" id="style-tabs">
+          <button class="tab active" type="button" data-state="normal">默认状态</button>
+          <button class="tab" type="button" data-state="hover">移入状态</button>
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label>线条颜色</label>
+            <button class="reset-btn" id="reset-border" type="button" title="重置">↻</button>
+          </div>
+          <div class="color-row">
+            <input id="input-border-color" type="color" />
+            <input id="input-border-hex" type="text" spellcheck="false" />
+          </div>
+        </div>
+        <div class="field" id="fill-field">
+          <div class="field-head">
+            <label>填充颜色</label>
+            <button class="reset-btn" id="reset-fill" type="button" title="重置">↻</button>
+          </div>
+          <div class="color-row">
+            <input id="input-fill-color" type="color" />
+            <input id="input-fill-hex" type="text" spellcheck="false" />
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label>线条粗细</label>
+            <span id="width-value">2px</span>
+          </div>
+          <input id="input-border-width" type="range" min="1" max="20" step="1" />
+          <div class="range-labels"><span>1px</span><span>20px</span></div>
+        </div>
+        <div class="switch-row">
+          <span>默认/移入状态交替变化</span>
+          <label class="switch">
+            <input id="input-blink" type="checkbox" />
+            <span class="switch-ui"></span>
+          </label>
+        </div>
+      </div>
+
+      <div id="image-settings" hidden>
+        <p class="hint">图片热点仅支持查看与删除，样式请在素材中调整。</p>
+      </div>
+    </section>
   </aside>
   <div id="pano"></div>
   <div class="status" id="status">加载中…</div>

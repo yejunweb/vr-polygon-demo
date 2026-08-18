@@ -6,7 +6,7 @@
   "keywords": "",
   "thumbUrl": "/resource/prod/fed3aef4b52/9efjzskv5O7/93326116/imgs/thumb.jpg",
   "createDate": 1786088787,
-  "updateDate": 1787019627,
+  "updateDate": 1787021229,
   "templateId": 1,
   "expired": 1,
   "expireDate": "",
@@ -231,238 +231,98 @@
           "locked": 0
         },
         {
-          "id": "h_M0N_AAo7HJO8QCHR8Ln44",
+          "id": "h_t8rxkb9g4msy270du",
           "zOrder": 2,
           "icon": {
-            "type": 6,
-            "ath": -24.25449082,
-            "atv": 28.32164554,
-            "points": [
-              {
-                "ath": -24.15804057,
-                "atv": 28.34913615
-              },
-              {
-                "ath": 14.092477333268567,
-                "atv": 29.82517042571251
-              },
-              {
-                "ath": 19.735608948797907,
-                "atv": 36.89675795006261
-              },
-              {
-                "ath": 18.929676690256592,
-                "atv": 38.14359268562306
-              },
-              {
-                "ath": -31.28127089778698,
-                "atv": 35.677364323437615
-              },
-              {
-                "ath": -24.25449082,
-                "atv": 28.32164554
-              }
-            ],
-            "borderWidth": 2,
-            "borderColor": "231,231,231,1.00",
-            "overBorderWidth": 2,
-            "overBorderColor": "40,110,250,1",
-            "blink": 1
-          },
-          "title": "碧城玖玺",
-          "showTitle": 1,
-          "titleSetting": {
-            "align": "left",
-            "edge": "bottom",
-            "ox": 0,
-            "oy": -30,
-            "font": {
-              "fontSize": 12,
-              "fontColor": "255,255,255,1",
-              "fontFaceType": 0
-            },
-            "fontWeight": "normal",
-            "fontStyle": "normal",
-            "background": {
-              "type": 0,
-              "bgColor": "0,0,0,0.5",
-              "bgRoundedge": 5,
-              "borderWidth": 0,
-              "borderColor": "255,255,255,1",
-              "gradientAngle": 0,
-              "gradientStartColor": "0,0,0,0.5",
-              "gradientEndColor": "0,0,0,0.5"
-            },
-            "styleType": 0,
-            "specialStyleId": 0,
-            "writingMode": 0,
-            "useApi": 0,
-            "apiUrl": "",
-            "apiInterval": 0,
-            "showWhenHoving": 0,
-            "stick": 0,
-            "zoom": false,
-            "rx": 0,
-            "ry": 0,
-            "rz": 0,
-            "rotate": 0,
-            "textStroke": {
-              "color": "0,0,0,1",
-              "width": 0
-            },
-            "letterSpacing": "normal",
-            "lineHeight": "normal"
-          },
-          "data": {
-            "code": 9,
-            "title": "",
-            "sceneId": 32475491,
-            "animation": 0,
-            "exitTargetView": {
-              "type": 0
-            },
-            "enterInitView": {
-              "type": 0
-            },
-            "enterTargetView": {
-              "type": 0
-            }
-          },
-          "visible": 1,
-          "locked": 0
-        },
-        {
-          "id": "h_Fw9hLdQa8MN_GIKy_jhWI",
-          "zOrder": 3,
-          "icon": {
             "type": 5,
-            "ath": 0.7119925676777935,
-            "atv": 44.50223895437231,
-            "points": [
-              {
-                "ath": -29.85365919,
-                "atv": 37.10365118
-              },
-              {
-                "ath": 20.95898608,
-                "atv": 39.12162451
-              },
-              {
-                "ath": 63.62815504,
-                "atv": 62.83954838
-              },
-              {
-                "ath": -67.96722141,
-                "atv": 55.74426467
-              }
-            ],
-            "fillColor": "15,15,15,0.50",
-            "borderWidth": 2,
-            "borderColor": "40,110,250,1",
-            "overFillColor": "255,255,255,0.5",
-            "overBorderWidth": 2,
-            "overBorderColor": "40,110,250,1",
-            "blink": 1
-          },
-          "title": "碧城玖玺",
-          "showTitle": 1,
-          "titleSetting": {
-            "align": "left",
-            "edge": "bottom",
-            "ox": 0,
-            "oy": -30,
-            "font": {
-              "fontSize": 12,
-              "fontColor": "255,255,255,1",
-              "fontFaceType": 0
-            },
-            "fontWeight": "normal",
-            "fontStyle": "normal",
-            "background": {
-              "type": 0,
-              "bgColor": "0,0,0,0.5",
-              "bgRoundedge": 5,
-              "borderWidth": 0,
-              "borderColor": "255,255,255,1",
-              "gradientAngle": 0,
-              "gradientStartColor": "0,0,0,0.5",
-              "gradientEndColor": "0,0,0,0.5"
-            },
-            "styleType": 0,
-            "specialStyleId": 0,
-            "writingMode": 0,
-            "useApi": 0,
-            "apiUrl": "",
-            "apiInterval": 0,
-            "showWhenHoving": 0,
-            "stick": 0,
-            "zoom": false,
-            "rx": 0,
-            "ry": 0,
-            "rz": 0,
-            "rotate": 0,
-            "textStroke": {
-              "color": "0,0,0,1",
-              "width": 0
-            },
-            "letterSpacing": "normal",
-            "lineHeight": "normal"
-          },
-          "data": {
-            "code": 9,
-            "title": "",
-            "sceneId": 32475491,
-            "animation": 0,
-            "exitTargetView": {
-              "type": 0
-            },
-            "enterInitView": {
-              "type": 0
-            },
-            "enterTargetView": {
-              "type": 0
-            }
-          },
-          "visible": 1,
-          "locked": 0
-        },
-        {
-          "id": "h_asxmp996r9msy1bhix",
-          "zOrder": 4,
-          "icon": {
-            "type": 5,
-            "ath": -110.95764411671553,
-            "atv": 36.304392389539984,
-            "points": [
-              {
-                "ath": -147.55924249947074,
-                "atv": 27.57777411208023
-              },
-              {
-                "ath": -127.63298256453834,
-                "atv": 16.58232087706003
-              },
-              {
-                "ath": -74.04210282149518,
-                "atv": 31.083174993424056
-              },
-              {
-                "ath": -94.59624858135783,
-                "atv": 69.97429957559561
-              }
-            ],
-            "borderWidth": 2,
-            "borderColor": "40,110,250,1",
+            "borderWidth": 3,
+            "borderColor": "255,255,255,1.00",
             "overBorderWidth": 2,
             "overBorderColor": "40,110,250,1",
             "blink": 1,
-            "fillColor": "15,15,15,0.50",
-            "overFillColor": "255,255,255,0.5"
+            "fillColor": "255,56,56,0.50",
+            "overFillColor": "255,255,255,0.50",
+            "points": [
+              {
+                "ath": 142.1251930665561,
+                "atv": -6.360564988238894
+              },
+              {
+                "ath": 148.04611446361437,
+                "atv": -6.8105991688269825
+              },
+              {
+                "ath": 148.4044634066325,
+                "atv": 10.489128415630834
+              },
+              {
+                "ath": 142.24156906361108,
+                "atv": 9.396378854744798
+              }
+            ],
+            "ath": 145.2043350001035,
+            "atv": 1.6785857783274385
           },
-          "title": "色块",
+          "title": "多边形",
           "showTitle": 0,
           "visible": 1,
-          "locked": 0
+          "locked": 0,
+          "data": {
+            "code": 9,
+            "title": ""
+          }
+        },
+        {
+          "id": "h_ja98oh2afzmsy2anb2",
+          "zOrder": 3,
+          "icon": {
+            "type": 6,
+            "borderWidth": 10,
+            "borderColor": "255,0,0,1.00",
+            "overBorderWidth": 20,
+            "overBorderColor": "255,255,255,1.00",
+            "blink": 1,
+            "points": [
+              {
+                "ath": 4.138240456002961,
+                "atv": 11.277765312848627
+              },
+              {
+                "ath": -115.44174036942744,
+                "atv": 24.015328519448396
+              },
+              {
+                "ath": -139.37451374152778,
+                "atv": 34.4557883758674
+              },
+              {
+                "ath": -89.73514598131447,
+                "atv": 65.68074456950265
+              },
+              {
+                "ath": 101.84048113449361,
+                "atv": 27.595554654495114
+              },
+              {
+                "ath": 138.15891263115495,
+                "atv": 20.4008801474205
+              },
+              {
+                "ath": 145.23352141862023,
+                "atv": 10.477088021634097
+              }
+            ],
+            "ath": 6.402822221143148,
+            "atv": 27.70044994303097
+          },
+          "title": "折线",
+          "showTitle": 0,
+          "visible": 1,
+          "locked": 0,
+          "data": {
+            "code": 9,
+            "title": ""
+          }
         }
       ],
       "groups": {

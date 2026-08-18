@@ -7,14 +7,41 @@
   var TYPE_POLYLINE = 6;
 
   function parseRgba(str, fallback) {
-    var base = fallback || { hex: 0xffffff, alpha: 1 };
+    var base = fallback || { hex: 0xffffff, alpha: 1, r: 255, g: 255, b: 255 };
     if (!str) return base;
     var parts = String(str).split(",").map(function (n) { return Number(n.trim()); });
     var r = parts[0] || 0;
     var g = parts[1] || 0;
     var b = parts[2] || 0;
     var a = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : 1;
-    return { hex: (r << 16) + (g << 8) + b, alpha: a };
+    return { hex: (r << 16) + (g << 8) + b, alpha: a, r: r, g: g, b: b };
+  }
+
+  function toHexString(hexNum) {
+    return "#" + ("000000" + (hexNum >>> 0).toString(16)).slice(-6);
+  }
+
+  function rgbaToHex(str, fallback) {
+    return toHexString(parseRgba(str, fallback).hex);
+  }
+
+  function hexToRgb(hex) {
+    var raw = String(hex || "").replace("#", "");
+    if (raw.length === 3) raw = raw[0] + raw[0] + raw[1] + raw[1] + raw[2] + raw[2];
+    var n = parseInt(raw, 16);
+    if (isNaN(n)) return { r: 255, g: 255, b: 255 };
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function formatRgba(r, g, b, a) {
+    var alpha = a == null ? 1 : a;
+    return r + "," + g + "," + b + "," + Number(alpha).toFixed(2);
+  }
+
+  function replaceRgb(rgbaStr, hex, fallback) {
+    var parsed = parseRgba(rgbaStr, fallback);
+    var rgb = hexToRgb(hex);
+    return formatRgba(rgb.r, rgb.g, rgb.b, parsed.alpha);
   }
 
   function unwrapPoints(points) {
@@ -126,7 +153,7 @@
     return name;
   }
 
-  function addImageHotspot(krpano, hs) {
+  function addImageHotspot(krpano, hs, options) {
     var name = safeName(hs.id);
     var icon = hs.icon || {};
     var scaleX = icon.scaleX != null ? Number(icon.scaleX) : 1;
@@ -150,7 +177,13 @@
     krpano.set(hsPath(name, "scale"), 1);
     krpano.set(hsPath(name, "visible"), hs.visible !== 0);
     krpano.set(hsPath(name, "capture"), false);
-    krpano.set(hsPath(name, "enabled"), false);
+    krpano.set(hsPath(name, "data_id"), hs.id);
+    if (options && options.editable) {
+      krpano.set(hsPath(name, "enabled"), true);
+      krpano.set(hsPath(name, "onclick"), "js(onEditorSelectHotspot(" + quote(name) + "));");
+    } else {
+      krpano.set(hsPath(name, "enabled"), false);
+    }
     return name;
   }
 
@@ -177,7 +210,7 @@
       var type = hs.icon && hs.icon.type;
       if (type === TYPE_POLYGON) addPolyHotspot(krpano, hs, false, options);
       else if (type === TYPE_POLYLINE) addPolyHotspot(krpano, hs, true, options);
-      else if (type === TYPE_IMAGE) addImageHotspot(krpano, hs);
+      else if (type === TYPE_IMAGE) addImageHotspot(krpano, hs, options);
     });
   }
 
@@ -206,14 +239,10 @@
     }
   }
 
-  function createHotspotRecord(type, points, zOrder) {
+  function defaultPolyIcon(type) {
     var isLine = type === TYPE_POLYLINE;
-    var center = centroid(points);
     var icon = {
       type: type,
-      ath: center.ath,
-      atv: center.atv,
-      points: points.slice(),
       borderWidth: 2,
       borderColor: isLine ? "231,231,231,1.00" : "40,110,250,1",
       overBorderWidth: 2,
@@ -222,17 +251,59 @@
     };
     if (!isLine) {
       icon.fillColor = "15,15,15,0.50";
-      icon.overFillColor = "255,255,255,0.5";
+      icon.overFillColor = "255,255,255,0.50";
     }
+    return icon;
+  }
+
+  function createHotspotRecord(type, points, zOrder, iconStyle) {
+    var isLine = type === TYPE_POLYLINE;
+    var center = centroid(points);
+    var icon = defaultPolyIcon(type);
+    if (iconStyle) {
+      Object.keys(iconStyle).forEach(function (key) {
+        icon[key] = iconStyle[key];
+      });
+    }
+    icon.type = type;
+    icon.ath = center.ath;
+    icon.atv = center.atv;
+    icon.points = points.slice();
     return {
       id: "h_" + Math.random().toString(36).slice(2, 12) + Date.now().toString(36),
       zOrder: zOrder || 1,
       icon: icon,
-      title: isLine ? "折线" : "色块",
+      title: isLine ? "折线" : "多边形",
       showTitle: 0,
       visible: 1,
-      locked: 0
+      locked: 0,
+      data: { code: 9, title: "" }
     };
+  }
+
+  function refreshPolyStyle(krpano, hs, options) {
+    if (!krpano || !hs || !hs.icon) return;
+    var name = safeName(hs.id);
+    var isLine = hs.icon.type === TYPE_POLYLINE;
+    krpano.call("polygon_blink_disable(" + quote(name) + ");");
+    setPolyAppearance(krpano, name, hs.icon, isLine);
+    if (options && options.previewHover && hs.icon.blink !== 1) {
+      krpano.set(hsPath(name, "fillcolor"), krpano.get(hsPath(name, "overfillcolor")));
+      krpano.set(hsPath(name, "fillalpha"), krpano.get(hsPath(name, "overfillalpha")));
+      krpano.set(hsPath(name, "bordercolor"), krpano.get(hsPath(name, "overbordercolor")));
+      krpano.set(hsPath(name, "borderalpha"), krpano.get(hsPath(name, "overborderalpha")));
+      krpano.set(hsPath(name, "borderwidth"), krpano.get(hsPath(name, "overborderwidth")));
+    }
+    if (hs.icon.blink === 1) {
+      krpano.set(hsPath(name, "blink"), true);
+      krpano.call("polygon_blink_enable(" + quote(name) + ");");
+    }
+  }
+
+  function actionLabel(hs) {
+    var code = hs && hs.data && hs.data.code;
+    if (code === 9) return "场景切换";
+    return typeLabel(hs && hs.icon && hs.icon.type);
   }
 
   function nextZOrder(data) {
@@ -293,6 +364,9 @@
     TYPE_POLYGON: TYPE_POLYGON,
     TYPE_POLYLINE: TYPE_POLYLINE,
     parseRgba: parseRgba,
+    rgbaToHex: rgbaToHex,
+    hexToRgb: hexToRgb,
+    replaceRgb: replaceRgb,
     unwrapPoints: unwrapPoints,
     safeName: safeName,
     quote: quote,
@@ -306,7 +380,10 @@
     removeHotspot: removeHotspot,
     readPoints: readPoints,
     setPoints: setPoints,
+    defaultPolyIcon: defaultPolyIcon,
     createHotspotRecord: createHotspotRecord,
+    refreshPolyStyle: refreshPolyStyle,
+    actionLabel: actionLabel,
     nextZOrder: nextZOrder,
     upsertHotspot: upsertHotspot,
     removeHotspotRecord: removeHotspotRecord,

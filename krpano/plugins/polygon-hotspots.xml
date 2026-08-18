@@ -70,6 +70,20 @@
 		if(blink == true, polygon_blink_enable(get(name)););
 	</action>
 
+	<action name="polygon_blink_disable">
+		set(hotspot[%1].blink, false);
+		stoptween(hotspot[%1].fillcolor);
+		stoptween(hotspot[%1].fillalpha);
+		stoptween(hotspot[%1].bordercolor);
+		stoptween(hotspot[%1].borderalpha);
+		stoptween(hotspot[%1].borderwidth);
+		if(hotspot[%1].normalfillcolor !== null, copy(hotspot[%1].fillcolor, hotspot[%1].normalfillcolor););
+		if(hotspot[%1].normalfillalpha !== null, copy(hotspot[%1].fillalpha, hotspot[%1].normalfillalpha););
+		if(hotspot[%1].normalbordercolor !== null, copy(hotspot[%1].bordercolor, hotspot[%1].normalbordercolor););
+		if(hotspot[%1].normalborderwidth !== null, copy(hotspot[%1].borderwidth, hotspot[%1].normalborderwidth););
+		if(hotspot[%1].normalborderalpha !== null, copy(hotspot[%1].borderalpha, hotspot[%1].normalborderalpha););
+	</action>
+
 	<action name="polygon_blink_enable">
 		if(hotspot[%1].blink == true,
 			if(hotspot[%1].blink_duration === null, set(hotspot[%1].blink_duration, 4););
