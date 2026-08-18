@@ -346,3 +346,12 @@ alpha = (dist - threshold) / smoothing   （过渡带，软边）
 ## 部署
 
 推送 `main`/`master` 时，GitHub Actions 跑 `scripts/build-pages.sh`：把 `public`、`krpano`、`assets`、`data` 拷到 `_site`，按仓库名改 `<base href>` 和 `APP_BASE`。Pages 上保存只写入浏览器 `localStorage`，不会改仓库里的 `tour.json`。
+
+---
+
+<p align="center">
+  <a href="https://cursor.com"><img src="assets/thanks/cursor.png" width="120" height="120" alt="Cursor" /></a>
+  &nbsp;&nbsp;
+  <a href="https://grok.com"><img src="assets/thanks/grok.png" width="120" height="120" alt="Grok" /></a>
+</p>
+<p align="center">感谢以上两位开发者</p>
