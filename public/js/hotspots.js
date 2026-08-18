@@ -7,6 +7,12 @@
   var TYPE_IMAGE = 2;
   var TYPE_POLYGON = 5;
   var TYPE_POLYLINE = 6;
+  var sourceImage = null;
+  var sourceWaiters = null;
+  var chromaCache = {};
+  var chromaCacheKeys = [];
+  var chromaJobs = {};
+  var CHROMA_CACHE_MAX = 8;
 
   function parseRgba(str, fallback) {
     var base = fallback || { hex: 0xffffff, alpha: 1, r: 255, g: 255, b: 255 };
@@ -177,10 +183,7 @@
     krpano.set(hsPath(name, "scale"), 1);
     krpano.set(hsPath(name, "visible"), hs.visible !== 0);
     krpano.set(hsPath(name, "renderer"), "webgl");
-    krpano.set(hsPath(name, "url"), imageUrl());
-    var chroma = chromaKeyValue(icon);
-    krpano.set(hsPath(name, "chromakey"), chroma || null);
-    krpano.set(hsPath(name, "alphahittest"), chroma ? 0.08 : 0);
+    applyImageUrl(krpano, name, icon);
   }
 
   function addImageHotspot(krpano, hs, options) {
@@ -338,6 +341,7 @@
     if (!krpano || !data) return;
     var scene = getScene(data);
     if (!scene) return;
+    ensureSourceImage(function () {});
     (scene.hotspot || []).forEach(function (hs) {
       var type = hs.icon && hs.icon.type;
       if (type === TYPE_POLYGON) addPolyHotspot(krpano, hs, false, options);
@@ -406,13 +410,102 @@
   function chromaKeyValue(icon) {
     var hex = normalizeHex(icon && icon.chromaColor);
     if (!hex) return "";
-    var rgb = hexToRgb(hex);
-    var color = "0x" + ("000000" + ((rgb.r << 16) + (rgb.g << 8) + rgb.b).toString(16)).slice(-6).toUpperCase();
     var threshold = icon.chromaThreshold != null ? Number(icon.chromaThreshold) : 0.33;
     var smoothing = icon.chromaSmoothing != null ? Number(icon.chromaSmoothing) : 0.1;
     if (isNaN(threshold)) threshold = 0.33;
     if (isNaN(smoothing)) smoothing = 0.1;
-    return color + "|" + threshold + "|" + smoothing;
+    return hex + "|" + threshold + "|" + smoothing;
+  }
+
+  function chromaPixelAlpha(r, g, b, kr, kg, kb, threshold, smoothing) {
+    var dist = Math.sqrt((r - kr) * (r - kr) + (g - kg) * (g - kg) + (b - kb) * (b - kb)) / 255;
+    if (dist <= threshold) return 0;
+    if (!smoothing || dist >= threshold + smoothing) return 1;
+    return (dist - threshold) / smoothing;
+  }
+
+  function ensureSourceImage(done) {
+    if (sourceImage && sourceImage.complete && sourceImage.naturalWidth) {
+      done(sourceImage);
+      return;
+    }
+    if (sourceWaiters) {
+      sourceWaiters.push(done);
+      return;
+    }
+    sourceWaiters = [done];
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () {
+      sourceImage = img;
+      var list = sourceWaiters || [];
+      sourceWaiters = null;
+      for (var i = 0; i < list.length; i++) list[i](img);
+    };
+    img.onerror = function () {
+      sourceWaiters = null;
+    };
+    img.src = imageUrl();
+  }
+
+  function buildChromaBlobUrl(img, icon) {
+    var key = chromaKeyValue(icon);
+    if (!key || !img) return imageUrl();
+    if (chromaCache[key]) return chromaCache[key];
+    var parts = key.split("|");
+    var hex = parts[0];
+    var threshold = Number(parts[1]);
+    var smoothing = Number(parts[2]);
+    var canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var data = imageData.data;
+    var rgb = hexToRgb(hex);
+    for (var i = 0; i < data.length; i += 4) {
+      var a = chromaPixelAlpha(data[i], data[i + 1], data[i + 2], rgb.r, rgb.g, rgb.b, threshold, smoothing);
+      data[i + 3] = Math.round(Math.min(data[i + 3], 255 * a));
+    }
+    ctx.putImageData(imageData, 0, 0);
+    var dataUrl = canvas.toDataURL("image/png");
+    var binary = atob(dataUrl.split(",")[1]);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    chromaCache[key] = url;
+    chromaCacheKeys.push(key);
+    if (chromaCacheKeys.length > CHROMA_CACHE_MAX) {
+      delete chromaCache[chromaCacheKeys.shift()];
+    }
+    return url;
+  }
+
+  function setHotspotImageUrl(krpano, name, url) {
+    var current = krpano.get(hsPath(name, "url"));
+    if (current === url) return;
+    krpano.set(hsPath(name, "url"), url);
+  }
+
+  function applyImageUrl(krpano, name, icon) {
+    if (!chromaKeyValue(icon)) {
+      setHotspotImageUrl(krpano, name, imageUrl());
+      return;
+    }
+    var job = (chromaJobs[name] || 0) + 1;
+    chromaJobs[name] = job;
+    function applyChroma(img) {
+      if (chromaJobs[name] !== job) return;
+      if (!krpano.get(hsPath(name, "name"))) return;
+      setHotspotImageUrl(krpano, name, buildChromaBlobUrl(img, icon));
+    }
+    if (sourceImage && sourceImage.complete && sourceImage.naturalWidth) {
+      applyChroma(sourceImage);
+    } else {
+      setHotspotImageUrl(krpano, name, imageUrl());
+      ensureSourceImage(applyChroma);
+    }
   }
 
   function defaultImageIcon() {

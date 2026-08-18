@@ -670,22 +670,6 @@
     return document.querySelector("#pano canvas");
   }
 
-  function sampleScreenshotColor(pano) {
-    if (!pano || !pano.webGL || typeof pano.webGL.makeScreenshot !== "function") return "";
-    var shot = pano.webGL.makeScreenshot(0, 0, true, "canvas");
-    if (!shot) return "";
-    var mx = Math.round(Number(pano.get("mouse.stagex")));
-    var my = Math.round(Number(pano.get("mouse.stagey")));
-    if (isNaN(mx) || isNaN(my) || mx < 0 || my < 0 || mx >= shot.width || my >= shot.height) return "";
-    try {
-      var pix = shot.getContext("2d").getImageData(mx, my, 1, 1).data;
-      if (pix[3] > 0 || pix[0] || pix[1] || pix[2]) {
-        return hexFromRgb({ r: pix[0], g: pix[1], b: pix[2] });
-      }
-    } catch (err) {}
-    return "";
-  }
-
   function sampleCanvasColor(clientX, clientY) {
     var canvas = getPanoCanvas();
     if (!canvas) return "";
@@ -732,17 +716,7 @@
     if (!pickingColor) return;
     ev.preventDefault();
     ev.stopPropagation();
-    var pano = krpano();
-    var record = currentRecord();
-    var name = record && HS.isImageType(record.icon && record.icon.type) ? HS.safeName(record.id) : null;
-    var backup = null;
-    if (pano && name) {
-      backup = pano.get(HS.hsPath(name, "chromakey"));
-      pano.set(HS.hsPath(name, "chromakey"), null);
-    }
-    var hex = sampleScreenshotColor(pano);
-    if (!hex) hex = sampleCanvasColor(ev.clientX, ev.clientY);
-    if (pano && name && backup) pano.set(HS.hsPath(name, "chromakey"), backup);
+    var hex = sampleCanvasColor(ev.clientX, ev.clientY);
     stopScenePick();
     if (hex) {
       applyMattingColor(hex);
@@ -789,10 +763,17 @@
     startScenePick();
   }
 
+  var mattingSliderTimer = null;
+
   function onMattingSliderInput() {
     els.mattingOpacityValue.textContent = String(formatMattingValue(els.mattingOpacity.value));
     els.mattingSmoothValue.textContent = String(formatMattingValue(els.mattingSmooth.value));
-    applyLiveImage();
+    writeImageForm(currentRecord());
+    if (mattingSliderTimer) clearTimeout(mattingSliderTimer);
+    mattingSliderTimer = setTimeout(function () {
+      mattingSliderTimer = null;
+      applyLiveImage();
+    }, 40);
   }
 
   function nudgeMattingSlider(kind, delta) {

@@ -6,7 +6,7 @@
   "keywords": "",
   "thumbUrl": "/resource/prod/fed3aef4b52/9efjzskv5O7/93326116/imgs/thumb.jpg",
   "createDate": 1786088787,
-  "updateDate": 1787042199,
+  "updateDate": 1787042968,
   "templateId": 1,
   "expired": 1,
   "expireDate": "",
@@ -436,7 +436,7 @@
             "zoom": true,
             "ath": 72.36333007385497,
             "atv": 4.1828577425330575,
-            "chromaColor": "#1a8cc4",
+            "chromaColor": "#0a3152",
             "chromaThreshold": 0.33,
             "chromaSmoothing": 0.1
           },
